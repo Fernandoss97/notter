@@ -14,6 +14,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { show as showFocus } from '@/routes/focus';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
@@ -29,7 +30,7 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Foco',
-        href: '/foco',
+        href: showFocus(),
         icon: Timer,
     },
     {
