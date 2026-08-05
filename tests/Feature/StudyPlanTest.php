@@ -1,0 +1,159 @@
+<?php
+
+use App\Models\Enums\StudyPlanType;
+use App\Models\Review;
+use App\Models\StudyPlan;
+use App\Models\Subject;
+use App\Models\Topic;
+use App\Models\User;
+
+test('guests are redirected away from the plan screen', function () {
+    $this->get('/plano')->assertRedirect('/login');
+});
+
+test('the plan screen renders an empty state without any plan', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/plano')
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->component('plan/index')
+            ->where('activePlan', null)
+            ->where('plans', []));
+});
+
+test('the plan screen renders the active plan subjects and topics', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create(['name' => 'Concurso XYZ']);
+    $subject = Subject::factory()->for($plan)->create(['name' => 'Álgebra Linear']);
+    $topic = Topic::factory()->for($subject)->completed()->create(['name' => 'Espaços vetoriais']);
+    Review::factory()->for($topic)->overdue()->create();
+
+    $this->actingAs($user)
+        ->get('/plano')
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->where('activePlan.name', 'Concurso XYZ')
+            ->where('activePlan.subjects.0.name', 'Álgebra Linear')
+            ->where('activePlan.subjects.0.topics.0.name', 'Espaços vetoriais')
+            ->where('activePlan.subjects.0.topics.0.completed', true)
+            ->where('activePlan.subjects.0.topics.0.reviewStatus', 'overdue'));
+});
+
+test('creating a plan makes it active', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->post('/plano', [
+        'name' => 'Concurso XYZ',
+        'type' => StudyPlanType::Contest->value,
+        'weekly_goal_minutes' => 1200,
+    ])->assertRedirect(route('plans.index'));
+
+    $plan = $user->studyPlans()->sole();
+    expect($plan->name)->toBe('Concurso XYZ')
+        ->and($plan->is_active)->toBeTrue();
+});
+
+test('creating a second plan deactivates the first', function () {
+    $user = User::factory()->create();
+    $first = StudyPlan::factory()->for($user)->active()->create();
+
+    $this->actingAs($user)->post('/plano', [
+        'name' => 'Segundo plano',
+        'type' => StudyPlanType::Free->value,
+        'weekly_goal_minutes' => 600,
+    ]);
+
+    expect($first->refresh()->is_active)->toBeFalse();
+    expect($user->activeStudyPlan?->name)->toBe('Segundo plano');
+});
+
+test('activating a plan requires ownership', function () {
+    $user = User::factory()->create();
+    $foreignPlan = StudyPlan::factory()->create();
+
+    $this->actingAs($user)
+        ->post("/plano/{$foreignPlan->id}/activate")
+        ->assertForbidden();
+});
+
+test('a subject can be added to the active plan', function () {
+    $user = User::factory()->create();
+    StudyPlan::factory()->for($user)->active()->create();
+
+    $this->actingAs($user)->post('/plano/subjects', [
+        'name' => 'Estatística',
+        'priority' => 'high',
+        'goal_minutes' => 900,
+    ])->assertRedirect(route('plans.index'));
+
+    $subject = Subject::sole();
+    expect($subject->name)->toBe('Estatística')
+        ->and($subject->priority->value)->toBe('high')
+        ->and($subject->goal_minutes)->toBe(900);
+});
+
+test('adding a subject without an active plan flashes an error', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->post('/plano/subjects', [
+        'name' => 'Estatística',
+        'priority' => 'high',
+    ]);
+
+    expect(Subject::count())->toBe(0);
+});
+
+test('a topic can be added to a subject of the active plan', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+    $subject = Subject::factory()->for($plan)->create();
+
+    $this->actingAs($user)->post('/plano/topics', [
+        'subject_id' => $subject->id,
+        'name' => 'Autovalores e autovetores',
+    ])->assertRedirect(route('plans.index'));
+
+    $topic = Topic::sole();
+    expect($topic->name)->toBe('Autovalores e autovetores')
+        ->and($topic->subject_id)->toBe($subject->id);
+});
+
+test('a topic cannot be added to a subject outside the active plan', function () {
+    $user = User::factory()->create();
+    StudyPlan::factory()->for($user)->active()->create();
+    $foreignSubject = Subject::factory()->create();
+
+    $this->actingAs($user)
+        ->post('/plano/topics', [
+            'subject_id' => $foreignSubject->id,
+            'name' => 'Tópico indevido',
+        ])
+        ->assertInvalid(['subject_id']);
+});
+
+test('completing a topic schedules its first review', function () {
+    $this->freezeTime();
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+    $subject = Subject::factory()->for($plan)->create();
+    $topic = Topic::factory()->for($subject)->create();
+
+    $this->actingAs($user)
+        ->post("/plano/topics/{$topic->id}/complete")
+        ->assertRedirect(route('plans.index'));
+
+    $topic->refresh();
+    expect($topic->completed_at)->not->toBeNull();
+    expect($topic->reviews()->count())->toBe(1);
+});
+
+test('completing a topic requires ownership', function () {
+    $user = User::factory()->create();
+    $foreignTopic = Topic::factory()->create();
+
+    $this->actingAs($user)
+        ->post("/plano/topics/{$foreignTopic->id}/complete")
+        ->assertForbidden();
+});

@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import { show as showFocus } from '@/routes/focus';
+import { index as showPlan } from '@/routes/plans';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
@@ -25,7 +26,7 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Plano de estudos',
-        href: '/plano',
+        href: showPlan(),
         icon: BookOpen,
     },
     {

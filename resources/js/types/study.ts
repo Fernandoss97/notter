@@ -38,3 +38,36 @@ export type PomodoroSettingSummary = {
     longBreakMinutes: number;
     cyclesBeforeLongBreak: number;
 };
+
+export type SubjectPriority = 'low' | 'medium' | 'high';
+
+export type StudyPlanType = 'contest' | 'free';
+
+export type PlanTopic = {
+    id: number;
+    name: string;
+    completed: boolean;
+    reviewStatus: ReviewStatus;
+};
+
+export type PlanSubject = {
+    id: number;
+    name: string;
+    priority: SubjectPriority;
+    goalMinutes: number | null;
+    topics: PlanTopic[];
+};
+
+export type PlanSummary = {
+    id: number;
+    name: string;
+    isActive: boolean;
+};
+
+export type ActiveStudyPlan = {
+    id: number;
+    name: string;
+    type: StudyPlanType;
+    weeklyGoalMinutes: number;
+    subjects: PlanSubject[];
+};

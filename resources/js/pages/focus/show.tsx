@@ -25,6 +25,7 @@ import {
     show,
     start as startSession,
 } from '@/routes/focus';
+import { index as showPlan } from '@/routes/plans';
 import type {
     ActivityType,
     FocusSession,
@@ -104,7 +105,7 @@ function EmptyPlanState() {
                 começar uma sessão de foco.
             </p>
             <Button asChild className="w-fit">
-                <Link href="/plano">Criar plano de estudos</Link>
+                <Link href={showPlan()}>Criar plano de estudos</Link>
             </Button>
         </Panel>
     );
