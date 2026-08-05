@@ -17,6 +17,42 @@
     --radius-md: 12px;
     --radius-lg: 20px;
 
+    /* Escala tipográfica Notter — sobrescreve os defaults do Tailwind.
+       `text-md` (17px) é um degrau extra que o Tailwind não tem. */
+    --text-xs: 12px;
+    --text-xs--line-height: 16px;
+    --text-sm: 13px;
+    --text-sm--line-height: 18px;
+    --text-base: 15px;
+    --text-base--line-height: 22px;
+    --text-md: 17px;
+    --text-md--line-height: 24px;
+    --text-lg: 20px;
+    --text-lg--line-height: 28px;
+    --text-xl: 26px;
+    --text-xl--line-height: 32px;
+    --text-2xl: 34px;
+    --text-2xl--line-height: 40px;
+
+    /* Numérico / timer — sempre em mono, tabular */
+    --text-num-sm: 22px;
+    --text-num-md: 40px;
+    --text-timer: 88px;
+    --text-timer-lg: 128px;
+
+    --tracking-tight: -0.01em;
+    --tracking-wide: 0.04em;
+
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Largura máxima do conteúdo do app -> `max-w-app` */
+    --container-app: 1440px;
+
+    /* Sombras Notter — sobrescrevem shadow-sm/md/lg do Tailwind (sutis, nunca pesadas) */
+    --shadow-sm: var(--elevation-sm);
+    --shadow-md: var(--elevation-md);
+    --shadow-lg: var(--elevation-lg);
+
     --color-background: var(--background);
     --color-foreground: var(--foreground);
 
@@ -82,6 +118,11 @@
     --color-status-info-bg: var(--status-info-bg);
     --color-status-warning: var(--status-warning);
     --color-status-warning-bg: var(--status-warning-bg);
+
+    /* Neutros que não têm slot shadcn equivalente */
+    --color-fg-2: var(--fg-2);
+    --color-border-strong: var(--border-strong);
+    --color-bg-inset: var(--bg-inset);
 }
 
 :root {
@@ -123,17 +164,15 @@
     --status-warning-bg: oklch(95% 0.04 85);
     --status-warning: oklch(66% 0.14 85);
 
-    --shadow-sm: 0 1px 2px oklch(25% 0.02 255 / 0.06);
-    --shadow-md:
+    --elevation-sm: 0 1px 2px oklch(25% 0.02 255 / 0.06);
+    --elevation-md:
         0 6px 16px oklch(25% 0.02 255 / 0.08),
         0 1px 2px oklch(25% 0.02 255 / 0.05);
-    --shadow-lg: 0 16px 40px oklch(25% 0.02 255 / 0.14);
+    --elevation-lg: 0 16px 40px oklch(25% 0.02 255 / 0.14);
 
-    /* Numérico / timer — JetBrains Mono, tabular */
-    --text-num-sm: 22px;
-    --text-num-md: 40px;
-    --text-timer: 88px;
-    --text-timer-lg: 128px;
+    /* Transições — usadas por sidebar/timer */
+    --duration-fast: 120ms;
+    --duration-base: 200ms;
 
     /* shadcn slots -> tokens Aprova */
     --background: var(--bg);
@@ -206,10 +245,10 @@
     --status-warning-bg: oklch(28% 0.045 85);
     --status-warning: oklch(74% 0.13 85);
 
-    --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.3);
-    --shadow-md:
+    --elevation-sm: 0 1px 2px oklch(0% 0 0 / 0.3);
+    --elevation-md:
         0 6px 18px oklch(0% 0 0 / 0.35), 0 1px 2px oklch(0% 0 0 / 0.25);
-    --shadow-lg: 0 20px 48px oklch(0% 0 0 / 0.5);
+    --elevation-lg: 0 20px 48px oklch(0% 0 0 / 0.5);
 
     --border: oklch(32% 0.015 255);
     --chart-5: oklch(68% 0.13 300);
