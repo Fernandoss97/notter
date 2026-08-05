@@ -42,6 +42,9 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            // Sempre null até a Fase 3 (StudySession); a SessionBar já está
+            // preparada para consumir o formato real quando ele existir.
+            'activeSession' => null,
         ];
     }
 }

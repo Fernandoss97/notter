@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { BookOpen, FolderGit2, LayoutGrid } from 'lucide-react';
+import { BookOpen, History, LayoutGrid, Settings, Timer } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -22,18 +22,28 @@ const mainNavItems: NavItem[] = [
         href: dashboard(),
         icon: LayoutGrid,
     },
+    {
+        title: 'Plano de estudos',
+        href: '/plano',
+        icon: BookOpen,
+    },
+    {
+        title: 'Foco',
+        href: '/foco',
+        icon: Timer,
+    },
+    {
+        title: 'Histórico',
+        href: '/historico',
+        icon: History,
+    },
 ];
 
 const footerNavItems: NavItem[] = [
     {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
+        title: 'Configurações',
+        href: '/configuracoes',
+        icon: Settings,
     },
 ];
 
