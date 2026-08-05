@@ -1,7 +1,8 @@
 import { Link, usePage } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
 import { Dot } from '@/components/dot';
+import { useLiveElapsedSeconds } from '@/hooks/use-live-elapsed-seconds';
 import { cn } from '@/lib/utils';
+import { show as showFocus } from '@/routes/focus';
 
 function formatElapsed(totalSeconds: number): string {
     const minutes = Math.floor(totalSeconds / 60);
@@ -12,46 +13,7 @@ function formatElapsed(totalSeconds: number): string {
 
 export function SessionBar() {
     const { activeSession } = usePage().props;
-
-    const [elapsedSeconds, setElapsedSeconds] = useState(
-        activeSession?.elapsedSeconds ?? 0,
-    );
-
-    // O servidor recalcula elapsedSeconds a cada visita/poll Inertia a
-    // partir do started_at/paused_at persistido; sempre que esse valor (ou
-    // a sessão) mudar, resincroniza o display antes de o tick local seguir
-    // interpolando. Comparação em render, não em efeito — ver
-    // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes.
-    const [synced, setSynced] = useState({
-        id: activeSession?.id,
-        elapsedSeconds: activeSession?.elapsedSeconds,
-    });
-
-    if (
-        activeSession?.id !== synced.id ||
-        activeSession?.elapsedSeconds !== synced.elapsedSeconds
-    ) {
-        setSynced({
-            id: activeSession?.id,
-            elapsedSeconds: activeSession?.elapsedSeconds,
-        });
-        setElapsedSeconds(activeSession?.elapsedSeconds ?? 0);
-    }
-
-    const sessionId = activeSession?.id;
-    const sessionState = activeSession?.state;
-
-    useEffect(() => {
-        if (!sessionId || sessionState !== 'running') {
-            return;
-        }
-
-        const interval = setInterval(() => {
-            setElapsedSeconds((seconds) => seconds + 1);
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [sessionId, sessionState]);
+    const elapsedSeconds = useLiveElapsedSeconds(activeSession);
 
     if (!activeSession) {
         return null;
@@ -99,7 +61,7 @@ export function SessionBar() {
             </div>
             <div className="flex-1" />
             <Link
-                href="/foco"
+                href={showFocus()}
                 className={cn(
                     'rounded-sm border px-3 py-1.5 text-xs font-semibold whitespace-nowrap',
                     paused

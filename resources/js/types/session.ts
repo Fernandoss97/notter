@@ -1,4 +1,4 @@
-export type FocusSessionState = 'running' | 'paused';
+import type { FocusSessionState } from '@/types/study';
 
 /**
  * Snapshot compartilhado via Inertia para a SessionBar. O servidor é a

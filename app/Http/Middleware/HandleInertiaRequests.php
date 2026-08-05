@@ -2,6 +2,10 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Enums\FocusSessionState;
+use App\Models\StudySession;
+use App\Models\Subject;
+use App\Models\Topic;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -42,9 +46,41 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
-            // Sempre null até a Fase 3 (StudySession); a SessionBar já está
-            // preparada para consumir o formato real quando ele existir.
-            'activeSession' => null,
+            'activeSession' => $this->activeSessionProp($request),
+        ];
+    }
+
+    /**
+     * @return array{id: int, subject: string, topic: string, state: string, elapsedSeconds: int, plannedSeconds: int}|null
+     */
+    private function activeSessionProp(Request $request): ?array
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return null;
+        }
+
+        $session = $user->studySessions()
+            ->where('state', '!=', FocusSessionState::Completed)
+            ->with(['subject', 'topic'])
+            ->latest()
+            ->first();
+
+        if (! $session instanceof StudySession) {
+            return null;
+        }
+
+        $subject = $session->subject;
+        $topic = $session->topic;
+
+        return [
+            'id' => $session->id,
+            'subject' => $subject instanceof Subject ? $subject->name : __('Sessão livre'),
+            'topic' => $topic instanceof Topic ? $topic->name : __('Sem tópico'),
+            'state' => $session->state->value,
+            'elapsedSeconds' => $session->elapsedSeconds(),
+            'plannedSeconds' => $session->planned_seconds,
         ];
     }
 }

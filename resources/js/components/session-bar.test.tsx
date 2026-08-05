@@ -12,10 +12,10 @@ vi.mock('@inertiajs/react', () => ({
         children,
         ...props
     }: {
-        href: string;
+        href: string | { url: string };
         children: React.ReactNode;
     }) => (
-        <a href={href} {...props}>
+        <a href={typeof href === 'string' ? href : href.url} {...props}>
             {children}
         </a>
     ),
