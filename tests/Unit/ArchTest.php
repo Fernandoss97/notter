@@ -17,7 +17,11 @@ arch('form requests')
 
 arch('models')
     ->expect('App\Models')
-    ->toBeClasses()
+    ->classes()
     ->toExtend('Illuminate\Database\Eloquent\Model');
+
+arch('model enums')
+    ->expect('App\Models\Enums')
+    ->toBeEnums();
 
 arch()->preset()->security()->ignoring('md5');
