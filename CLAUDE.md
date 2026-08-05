@@ -205,3 +205,33 @@ Use Wayfinder to generate TypeScript functions for Laravel routes. Import from `
 - IMPORTANT: Activate `inertia-react-development` when working with Inertia React client-side patterns.
 
 </laravel-boost-guidelines>
+
+# TDD Workflow (project-specific, not managed by Boost)
+
+No feature is done until it has tests at the layer(s) that actually exercise it. Pick the layer(s) by what changed — most changes need one, some need two, few need all three:
+
+| Layer | Tool | Lives in | Covers |
+|---|---|---|---|
+| Unit | Pest | `tests/Unit` | Pure logic: services, actions, helpers, casts, arch rules. No DB, no HTTP. |
+| Feature/Integration | Pest + `RefreshDatabase` | `tests/Feature` | Routes, controllers, form requests, policies, Inertia responses, DB side effects. |
+| Frontend unit | Vitest + Testing Library | co-located `*.test.ts(x)` next to the source file | React components, hooks, and `resources/js/lib` utilities in isolation (jsdom, no server). |
+| Browser/E2E | Pest Browser plugin (Playwright) | `tests/Browser` | Real user flows through a real Chromium instance against the actual Inertia/React app — auth flows, navigation, anything where the JS actually has to run correctly. |
+
+Rules:
+- New Eloquent model, action, or backend service → Unit test.
+- New/changed route, controller, form request, or policy → Feature test (assert the HTTP/Inertia response, not implementation details).
+- New/changed React component, hook, or `resources/js/lib` helper → Vitest test alongside it.
+- New/changed user-facing flow (login, a new page, navigation, anything that must survive a real browser) → a Browser test in `tests/Browser`.
+- Don't retrofit all four layers onto every one-line change — match effort to risk. A pure CSS/copy tweak doesn't need a Browser test; a new auth flow does.
+
+Commands:
+- `composer test` — full gate: Pint, PHPStan (larastan), Vitest, and the entire Pest suite (Unit + Feature + Browser). This is what must pass before calling work done.
+- `composer test:unit` / `composer test:feature` / `composer test:browser` — run one Pest suite while iterating.
+- `npm run test` / `npm run test:watch` — Vitest only.
+- `php artisan test --compact --filter=testName` — fastest inner loop for a single test.
+
+Notes:
+- `tests/Pest.php` binds `RefreshDatabase` for both `Feature` and `Browser` — every test gets a clean, migrated sqlite `:memory:` DB.
+- Browser tests need Playwright's Chromium installed once locally: `npx playwright install chromium` (already wired into `composer setup`).
+- Browser tests render the actual built frontend. If `public/hot` is left over from a killed `npm run dev`, the page will load blank (pointing at a dead dev-server URL) — delete it, or just don't have a stale dev server running when you run browser tests.
+- `tests/Unit/ArchTest.php` enforces baseline structure (controllers/requests/models suffixes and extends, no `dd`/`dump`/`die` in `App`). Extend it as new conventions get established, don't bypass it.

@@ -28,6 +28,7 @@
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.9.3",
         "pestphp/pest": "^5.0",
+        "pestphp/pest-plugin-browser": "^5.0",
         "pestphp/pest-plugin-laravel": "^5.0"
     },
     "autoload": {
@@ -49,7 +50,8 @@
             "@php artisan key:generate",
             "@php artisan migrate --force",
             "npm install",
-            "npm run build"
+            "npm run build",
+            "npx playwright install chromium"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
@@ -75,7 +77,17 @@
             "@php artisan config:clear --ansi",
             "@lint:check",
             "@types:check",
+            "npm run test",
             "@php artisan test"
+        ],
+        "test:unit": [
+            "@php artisan test --testsuite=Unit"
+        ],
+        "test:feature": [
+            "@php artisan test --testsuite=Feature"
+        ],
+        "test:browser": [
+            "@php artisan test --testsuite=Browser"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
