@@ -20,7 +20,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                             asChild
                             isActive={isCurrentUrl(item.href)}
                         >
-                            <Link href={item.href} prefetch>
+                            <Link href={item.href}>
                                 {item.icon && <item.icon />}
                                 <span>{item.title}</span>
                             </Link>
