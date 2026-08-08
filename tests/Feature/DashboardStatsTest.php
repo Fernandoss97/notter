@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\Enums\ActivityType;
 use App\Models\StudyPlan;
 use App\Models\StudySession;
 use App\Models\Subject;
@@ -16,11 +15,10 @@ test('the dashboard renders an empty state without an active plan', function () 
         ->assertInertia(fn ($page) => $page
             ->component('dashboard')
             ->where('plan', null)
-            ->where('subjects', [])
-            ->where('recentSessions', []));
+            ->has('recentDays', 7));
 });
 
-test('the dashboard reports topics done and subject progress', function () {
+test('the dashboard reports topics done across the plan', function () {
     $user = User::factory()->create();
     $plan = StudyPlan::factory()->for($user)->active()->create(['name' => 'Concurso XYZ']);
     $subject = Subject::factory()->for($plan)->create(['name' => 'Álgebra Linear']);
@@ -33,12 +31,10 @@ test('the dashboard reports topics done and subject progress', function () {
         ->assertInertia(fn ($page) => $page
             ->where('plan.name', 'Concurso XYZ')
             ->where('stats.topicsDone', 1)
-            ->where('stats.topicsTotal', 2)
-            ->where('subjects.0.name', 'Álgebra Linear')
-            ->where('subjects.0.progress', 50));
+            ->where('stats.topicsTotal', 2));
 });
 
-test('the dashboard sums completed session minutes for today and this week', function () {
+test('the dashboard sums completed session minutes for this week', function () {
     $this->freezeTime();
     $user = User::factory()->create();
     $plan = StudyPlan::factory()->for($user)->active()->create();
@@ -51,12 +47,10 @@ test('the dashboard sums completed session minutes for today and this week', fun
     $this->actingAs($user)
         ->get('/dashboard')
         ->assertSuccessful()
-        ->assertInertia(fn ($page) => $page
-            ->where('stats.todayMinutes', 50)
-            ->where('stats.weekMinutes', 50));
+        ->assertInertia(fn ($page) => $page->where('stats.weekMinutes', 50));
 });
 
-test('a running session contributes its live elapsed time to today minutes', function () {
+test('a running session contributes its live elapsed time to the week', function () {
     $this->freezeTime();
     $user = User::factory()->create();
     $plan = StudyPlan::factory()->for($user)->active()->create();
@@ -72,30 +66,86 @@ test('a running session contributes its live elapsed time to today minutes', fun
     $this->actingAs($user)
         ->get('/dashboard')
         ->assertSuccessful()
-        ->assertInertia(fn ($page) => $page->where('stats.todayMinutes', 10));
+        ->assertInertia(fn ($page) => $page->where('stats.weekMinutes', 10));
 });
 
-test('the dashboard lists the five most recent completed sessions', function () {
+test('the dashboard no longer repeats the plan and the history', function () {
     $user = User::factory()->create();
     $plan = StudyPlan::factory()->for($user)->active()->create();
-    $subject = Subject::factory()->for($plan)->create(['name' => 'Álgebra Linear']);
-
+    $subject = Subject::factory()->for($plan)->create();
     StudySession::factory()->for($user)->for($plan)->for($subject)->completed()->create([
-        'accumulated_seconds' => 3000,
-        'activity_type' => ActivityType::Exercises,
-        'exercises_total' => 20,
-        'exercises_correct' => 16,
         'ended_at' => now(),
     ]);
 
     $this->actingAs($user)
         ->get('/dashboard')
-        ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
-            ->where('recentSessions.0.subject', 'Álgebra Linear')
-            ->where('recentSessions.0.durationMinutes', 50)
-            ->where('recentSessions.0.activityType', 'exercises')
-            ->where('recentSessions.0.accuracy', 80));
+            ->missing('subjects')
+            ->missing('recentSessions'));
+});
+
+test('the last seven days come oldest first, with the empty ones kept', function () {
+    $this->freezeTime();
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+
+    StudySession::factory()->for($user)->for($plan)->completed()->create([
+        'accumulated_seconds' => 1800,
+        'ended_at' => today()->subDays(6),
+    ]);
+    StudySession::factory()->for($user)->for($plan)->completed()->create([
+        'accumulated_seconds' => 3600,
+        'ended_at' => today(),
+    ]);
+
+    $this->actingAs($user)
+        ->get('/dashboard')
+        ->assertInertia(fn ($page) => $page
+            ->has('recentDays', 7)
+            ->where('recentDays.0.minutes', 30)
+            ->where('recentDays.0.date', today()->subDays(6)->format('d/m'))
+            ->where('recentDays.3.minutes', 0)
+            ->where('recentDays.6.minutes', 60)
+            ->where('recentDays.6.date', today()->format('d/m')));
+});
+
+test('the last seven days leave out what happened before the window', function () {
+    $this->freezeTime();
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+
+    StudySession::factory()->for($user)->for($plan)->completed()->create([
+        'accumulated_seconds' => 3600,
+        'ended_at' => today()->subDays(8),
+    ]);
+
+    $this->actingAs($user)
+        ->get('/dashboard')
+        ->assertInertia(fn ($page) => $page
+            ->where('recentDays.0.minutes', 0)
+            ->where('recentDays.6.minutes', 0));
+});
+
+test('the last seven days follow the break preference', function () {
+    $this->freezeTime();
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+    StudySession::factory()->for($user)->for($plan)->completed()->create([
+        'accumulated_seconds' => 1800,
+        'break_seconds' => 600,
+        'ended_at' => today(),
+    ]);
+
+    $this->actingAs($user)
+        ->get('/dashboard')
+        ->assertInertia(fn ($page) => $page->where('recentDays.6.minutes', 30));
+
+    $user->pomodoroSetting()->firstOrCreate([])
+        ->update(['exclude_breaks_from_study_time' => false]);
+
+    $this->actingAs($user)
+        ->get('/dashboard')
+        ->assertInertia(fn ($page) => $page->where('recentDays.6.minutes', 40));
 });
 
 test('the current streak counts consecutive days ending today', function () {

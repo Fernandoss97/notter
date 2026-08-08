@@ -3,12 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Study\ResolveCurrentFocusSession;
-use App\Concerns\FormatsStudySessionRows;
 use App\Concerns\SummarizesStudyTime;
 use App\Models\Enums\FocusSessionState;
 use App\Models\StudyPlan;
-use App\Models\StudySession;
-use App\Models\Subject;
 use App\Models\Topic;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -18,20 +15,39 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    use FormatsStudySessionRows;
     use SummarizesStudyTime;
+
+    /**
+     * Dias mostrados no gráfico de barras — uma semana móvel, que é o
+     * horizonte em que a meta semanal faz sentido.
+     */
+    private const RECENT_DAYS = 7;
+
+    /**
+     * Abreviações indexadas por `dayOfWeek` (0 = domingo). Explícitas
+     * porque o locale da aplicação é `en`: pedir o nome traduzido ao
+     * Carbon devolveria "Mon".
+     *
+     * @var array<int, string>
+     */
+    private const WEEKDAY_LABEL = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 
     public function __construct(private ResolveCurrentFocusSession $resolveCurrentSession) {}
 
+    /**
+     * A tela de retrospectiva. Deliberadamente não repete o que já está a
+     * um clique: disciplina por disciplina é o plano, sessão por sessão é
+     * o histórico, e o dia de hoje é a própria tela de foco. Aqui fica o
+     * que nenhuma delas mostra — a semana contra a meta e a constância.
+     */
     public function show(Request $request): Response
     {
         $user = $request->user();
-        $plan = $user->activeStudyPlan()->with('subjects.topics.reviews')->first();
+        $plan = $user->activeStudyPlan()->with('subjects.topics')->first();
         $settings = $user->pomodoroSetting()->firstOrCreate([]);
         $excludeBreaks = $settings->exclude_breaks_from_study_time;
         $activeSession = $this->resolveCurrentSession->handle($user);
 
-        $subjects = [];
         $topicsDone = 0;
         $topicsTotal = 0;
         $topicsDoneThisWeek = 0;
@@ -39,22 +55,11 @@ class DashboardController extends Controller
 
         if ($plan) {
             foreach ($plan->subjects as $subject) {
-                $done = $subject->topics->filter(fn (Topic $topic) => $topic->isCompleted())->count();
-                $total = $subject->topics->count();
-                $topicsDone += $done;
-                $topicsTotal += $total;
+                $topicsDone += $subject->topics->filter(fn (Topic $topic) => $topic->isCompleted())->count();
+                $topicsTotal += $subject->topics->count();
                 $topicsDoneThisWeek += $subject->topics
                     ->filter(fn (Topic $topic) => $topic->completed_at !== null && $topic->completed_at->greaterThanOrEqualTo($weekStart))
                     ->count();
-
-                $subjects[] = [
-                    'id' => $subject->id,
-                    'name' => $subject->name,
-                    'topicsDone' => $done,
-                    'topicsTotal' => $total,
-                    'progress' => $total > 0 ? (int) round($done / $total * 100) : 0,
-                    'reviewStatus' => $this->subjectReviewStatus($subject),
-                ];
             }
         }
 
@@ -67,8 +72,6 @@ class DashboardController extends Controller
                 'weeklyGoalMinutes' => $plan->weekly_goal_minutes,
             ] : null,
             'stats' => [
-                'todayMinutes' => $this->minutesStudied($user, today(), today()->endOfDay(), $excludeBreaks, $activeSession),
-                'todayGoalMinutes' => $plan instanceof StudyPlan ? (int) round($plan->weekly_goal_minutes / 7) : 0,
                 'weekMinutes' => $this->minutesStudied($user, $weekStart, now()->endOfWeek(), $excludeBreaks, $activeSession),
                 'weekGoalMinutes' => $plan instanceof StudyPlan ? $plan->weekly_goal_minutes : 0,
                 'topicsDone' => $topicsDone,
@@ -77,16 +80,47 @@ class DashboardController extends Controller
                 'currentStreak' => $streaks['current'],
                 'longestStreak' => $streaks['longest'],
             ],
-            'subjects' => $subjects,
-            'recentSessions' => $user->studySessions()
-                ->where('state', FocusSessionState::Completed)
-                ->with('subject')
-                ->latest('ended_at')
-                ->take(5)
-                ->get()
-                ->map(fn (StudySession $session) => $this->sessionRow($session, $excludeBreaks))
-                ->all(),
+            'recentDays' => $this->recentDays($user, $excludeBreaks),
         ]);
+    }
+
+    /**
+     * Minutos estudados em cada um dos últimos sete dias, do mais antigo
+     * para hoje. Dias sem estudo entram com zero — a lacuna é a
+     * informação, e uma barra ausente não a comunicaria.
+     *
+     * @return array<int, array{date: string, weekday: string, minutes: int}>
+     */
+    private function recentDays(User $user, bool $excludeBreaks): array
+    {
+        $from = today()->subDays(self::RECENT_DAYS - 1);
+
+        $byDay = $user->studySessions()
+            ->where('state', FocusSessionState::Completed)
+            ->where('ended_at', '>=', $from)
+            ->toBase()
+            ->selectRaw('DATE(ended_at) as day')
+            ->selectRaw('COALESCE(SUM(accumulated_seconds), 0) as focus_seconds')
+            ->selectRaw('COALESCE(SUM(break_seconds), 0) as break_seconds')
+            ->groupBy('day')
+            ->get()
+            ->keyBy(fn (object $row) => (string) $row->day);
+
+        return collect(range(0, self::RECENT_DAYS - 1))
+            ->map(function (int $offset) use ($from, $byDay, $excludeBreaks) {
+                $day = $from->copy()->addDays($offset);
+                $row = $byDay->get($day->toDateString());
+
+                $seconds = (int) ($row->focus_seconds ?? 0)
+                    + ($excludeBreaks ? 0 : (int) ($row->break_seconds ?? 0));
+
+                return [
+                    'date' => $day->format('d/m'),
+                    'weekday' => self::WEEKDAY_LABEL[$day->dayOfWeek],
+                    'minutes' => (int) round($seconds / 60),
+                ];
+            })
+            ->all();
     }
 
     /**
@@ -125,19 +159,5 @@ class DashboardController extends Controller
         }
 
         return ['current' => $current, 'longest' => $longest];
-    }
-
-    /**
-     * @return 'overdue'|null
-     */
-    private function subjectReviewStatus(Subject $subject): ?string
-    {
-        foreach ($subject->topics as $topic) {
-            if ($topic->reviewStatus() === 'overdue') {
-                return 'overdue';
-            }
-        }
-
-        return null;
     }
 }

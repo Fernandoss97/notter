@@ -113,8 +113,6 @@ export type DashboardPlan = {
 };
 
 export type DashboardStats = {
-    todayMinutes: number;
-    todayGoalMinutes: number;
     weekMinutes: number;
     weekGoalMinutes: number;
     topicsDone: number;
@@ -122,6 +120,12 @@ export type DashboardStats = {
     topicsDoneThisWeek: number;
     currentStreak: number;
     longestStreak: number;
+};
+
+export type RecentDay = {
+    date: string;
+    weekday: string;
+    minutes: number;
 };
 
 export type DashboardSubject = {

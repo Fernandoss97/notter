@@ -1,56 +1,41 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { Page } from '@/components/page';
 import { Panel } from '@/components/panel';
-import { SessionsTable } from '@/components/sessions-table';
-import type { SessionRow } from '@/components/sessions-table';
 import { StatTile } from '@/components/stat-tile';
-import { SubjectCard } from '@/components/subject-card';
 import { Button } from '@/components/ui/button';
 import { ProgressBar } from '@/components/ui/progress-bar';
+import { WeeklyBars } from '@/components/weekly-bars';
 import { formatDurationMinutes } from '@/lib/format-duration';
-import { ACTIVITY_TYPE_LABEL } from '@/lib/study-labels';
 import { dashboard } from '@/routes';
 import { show as showFocus } from '@/routes/focus';
+import { index as showHistory } from '@/routes/history';
 import { index as showPlan } from '@/routes/plans';
-import type {
-    DashboardPlan,
-    DashboardStats,
-    DashboardSubject,
-    RecentSession,
-} from '@/types/study';
+import type { DashboardPlan, DashboardStats, RecentDay } from '@/types/study';
 
 interface DashboardProps {
     plan: DashboardPlan | null;
     stats: DashboardStats;
-    subjects: DashboardSubject[];
-    recentSessions: RecentSession[];
+    recentDays: RecentDay[];
 }
 
-export default function Dashboard({
-    plan,
-    stats,
-    subjects,
-    recentSessions,
-}: DashboardProps) {
-    const { auth } = usePage().props;
-
-    const sessionRows: SessionRow[] = recentSessions.map((session) => ({
-        date: session.date,
-        subject: session.subject,
-        duration: formatDurationMinutes(session.durationMinutes),
-        type: ACTIVITY_TYPE_LABEL[session.activityType],
-        exercises: session.exercises,
-        accuracy: session.accuracy,
-    }));
+/**
+ * A tela de retrospectiva. Não repete disciplina por disciplina (isso é o
+ * plano), sessão por sessão (o histórico) nem o dia de hoje (a tela de
+ * foco) — fica com a semana contra a meta e a constância, que não
+ * aparecem em nenhum outro lugar.
+ */
+export default function Dashboard({ plan, stats, recentDays }: DashboardProps) {
+    const dailyGoal =
+        stats.weekGoalMinutes > 0 ? Math.round(stats.weekGoalMinutes / 7) : 0;
 
     return (
         <>
-            <Head title="Dashboard" />
+            <Head title="Progresso" />
             <Page>
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
-                            Olá, {auth.user.name}
+                            Progresso
                         </h1>
                         {plan && (
                             <p className="mt-0.5 text-base text-fg-2">
@@ -61,14 +46,15 @@ export default function Dashboard({
                         )}
                     </div>
                     <Button asChild>
-                        <Link href={showFocus()}>Iniciar sessão de foco</Link>
+                        <Link href={showFocus()}>Estudar agora</Link>
                     </Button>
                 </div>
 
                 {!plan ? (
                     <Panel>
                         <p className="text-sm text-fg-2">
-                            Você ainda não tem um plano de estudos ativo.
+                            Você ainda não tem um plano de estudos ativo. O
+                            progresso aparece aqui assim que houver um.
                         </p>
                         <Button asChild className="w-fit">
                             <Link href={showPlan()}>
@@ -78,27 +64,7 @@ export default function Dashboard({
                     </Panel>
                 ) : (
                     <>
-                        <div className="stagger-children grid grid-cols-4 gap-6">
-                            <StatTile
-                                label="Horas hoje"
-                                value={formatDurationMinutes(
-                                    stats.todayMinutes,
-                                )}
-                                hint={`meta: ${formatDurationMinutes(stats.todayGoalMinutes)}`}
-                            >
-                                <ProgressBar
-                                    value={
-                                        stats.todayGoalMinutes > 0
-                                            ? Math.round(
-                                                  (stats.todayMinutes /
-                                                      stats.todayGoalMinutes) *
-                                                      100,
-                                              )
-                                            : 0
-                                    }
-                                    color="focus"
-                                />
-                            </StatTile>
+                        <div className="stagger-children grid grid-cols-3 gap-6">
                             <StatTile
                                 label="Semana"
                                 value={formatDurationMinutes(stats.weekMinutes)}
@@ -145,43 +111,23 @@ export default function Dashboard({
                             />
                         </div>
 
-                        <Panel title="Disciplinas do plano">
-                            {subjects.length > 0 ? (
-                                <div className="stagger-children grid grid-cols-2 gap-4">
-                                    {subjects.map((subject) => (
-                                        <SubjectCard
-                                            key={subject.id}
-                                            subject={subject.name}
-                                            topicsDone={subject.topicsDone}
-                                            topicsTotal={subject.topicsTotal}
-                                            progress={subject.progress}
-                                            reviewStatus={subject.reviewStatus}
-                                        />
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-start gap-3 py-2">
-                                    <p className="text-sm text-fg-2">
-                                        Nenhuma disciplina neste plano ainda.
-                                    </p>
-                                    <Button asChild variant="secondary">
-                                        <Link href={showPlan()}>
-                                            Adicionar disciplina
-                                        </Link>
-                                    </Button>
-                                </div>
-                            )}
+                        <Panel title="Últimos 7 dias">
+                            <WeeklyBars
+                                days={recentDays}
+                                goalMinutes={dailyGoal}
+                            />
                         </Panel>
 
-                        <Panel title="Histórico de sessões" pad={false}>
-                            {sessionRows.length > 0 ? (
-                                <SessionsTable rows={sessionRows} />
-                            ) : (
-                                <p className="px-5 py-8 text-center text-sm text-muted-foreground">
-                                    Sua primeira sessão de foco aparece aqui.
-                                </p>
-                            )}
-                        </Panel>
+                        <div className="flex gap-3">
+                            <Button asChild variant="secondary">
+                                <Link href={showPlan()}>Ver o plano</Link>
+                            </Button>
+                            <Button asChild variant="secondary">
+                                <Link href={showHistory()}>
+                                    Ver o histórico
+                                </Link>
+                            </Button>
+                        </div>
                     </>
                 )}
             </Page>
@@ -190,5 +136,5 @@ export default function Dashboard({
 }
 
 Dashboard.layout = {
-    breadcrumbs: [{ title: 'Dashboard', href: dashboard() }],
+    breadcrumbs: [{ title: 'Progresso', href: dashboard() }],
 };

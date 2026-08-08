@@ -6,7 +6,7 @@ use App\Models\Subject;
 use App\Models\Topic;
 use App\Models\User;
 
-test('the dashboard shows plan stats and subject progress', function () {
+test('the progress screen shows the week, the streak and the last seven days', function () {
     $user = User::factory()->create();
     $plan = StudyPlan::factory()->for($user)->active()->create([
         'name' => 'Concurso XYZ',
@@ -33,8 +33,14 @@ test('the dashboard shows plan stats and subject progress', function () {
         ->assertNoJavaScriptErrors();
 
     $page->assertSee('Concurso XYZ')
-        ->assertSee('Álgebra Linear')
+        ->assertSee('Semana')
         ->assertSee('50min')
         ->assertSee('1/2')
+        ->assertSee('Sequência')
+        ->assertSee('Últimos 7 dias')
         ->assertNoJavaScriptErrors();
+
+    // O que virou duplicata saiu daqui e ficou onde já morava.
+    $page->assertDontSee('Álgebra Linear')
+        ->assertDontSee('Histórico de sessões');
 });
