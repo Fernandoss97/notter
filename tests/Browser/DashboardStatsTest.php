@@ -1,0 +1,35 @@
+<?php
+
+use App\Models\StudyPlan;
+use App\Models\StudySession;
+use App\Models\Subject;
+use App\Models\Topic;
+use App\Models\User;
+
+test('the dashboard shows plan stats and subject progress', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create([
+        'name' => 'Concurso XYZ',
+        'weekly_goal_minutes' => 1200,
+    ]);
+    $subject = Subject::factory()->for($plan)->create(['name' => 'Álgebra Linear']);
+    Topic::factory()->for($subject)->completed()->create();
+    Topic::factory()->for($subject)->create();
+    StudySession::factory()->for($user)->for($plan)->for($subject)->completed()->create([
+        'accumulated_seconds' => 3000,
+        'ended_at' => now(),
+    ]);
+
+    $page = visit('/login')
+        ->fill('email', $user->email)
+        ->fill('password', 'password')
+        ->click('Log in')
+        ->assertPathIs('/dashboard')
+        ->assertNoJavaScriptErrors();
+
+    $page->assertSee('Concurso XYZ')
+        ->assertSee('Álgebra Linear')
+        ->assertSee('50min')
+        ->assertSee('1/2')
+        ->assertNoJavaScriptErrors();
+});

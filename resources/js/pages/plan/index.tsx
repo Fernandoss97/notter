@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { ReviewStatusBadge } from '@/components/ui/review-status-badge';
 import { SegmentedControl } from '@/components/ui/segmented-control';
+import { SUBJECT_PRIORITY_LABEL } from '@/lib/study-labels';
 import { cn } from '@/lib/utils';
 import { show as showFocus } from '@/routes/focus';
 import { activate, index, store as storePlan } from '@/routes/plans';
@@ -35,12 +36,6 @@ const PRIORITY_OPTIONS: { value: SubjectPriority; label: string }[] = [
     { value: 'medium', label: 'Média' },
     { value: 'high', label: 'Alta' },
 ];
-
-const PRIORITY_LABEL: Record<SubjectPriority, string> = {
-    low: 'Prioridade baixa',
-    medium: 'Prioridade média',
-    high: 'Prioridade alta',
-};
 
 interface PlanIndexProps {
     plans: PlanSummary[];
@@ -294,7 +289,7 @@ function SubjectRow({ subject }: { subject: PlanSubject }) {
                     </div>
                     <div className="mt-0.5 text-xs text-muted-foreground">
                         {subject.topics.length} tópicos ·{' '}
-                        {PRIORITY_LABEL[subject.priority]}
+                        {SUBJECT_PRIORITY_LABEL[subject.priority]}
                         {subject.goalMinutes &&
                             ` · meta ${Math.round(subject.goalMinutes / 60)}h/semana`}
                     </div>

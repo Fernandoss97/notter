@@ -16,6 +16,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { useLiveElapsedSeconds } from '@/hooks/use-live-elapsed-seconds';
+import { ACTIVITY_TYPE_LABEL } from '@/lib/study-labels';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import {
@@ -33,12 +34,9 @@ import type {
     StudyPlanSummary,
 } from '@/types/study';
 
-const ACTIVITY_OPTIONS: { value: ActivityType; label: string }[] = [
-    { value: 'reading', label: 'Leitura' },
-    { value: 'exercises', label: 'Exercícios' },
-    { value: 'review', label: 'Revisão' },
-    { value: 'practice', label: 'Prática' },
-];
+const ACTIVITY_OPTIONS: { value: ActivityType; label: string }[] = (
+    Object.entries(ACTIVITY_TYPE_LABEL) as [ActivityType, string][]
+).map(([value, label]) => ({ value, label }));
 
 function formatElapsed(totalSeconds: number): string {
     const hours = Math.floor(totalSeconds / 3600);

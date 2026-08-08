@@ -71,3 +71,39 @@ export type ActiveStudyPlan = {
     weeklyGoalMinutes: number;
     subjects: PlanSubject[];
 };
+
+export type DashboardPlan = {
+    id: number;
+    name: string;
+    weeklyGoalMinutes: number;
+};
+
+export type DashboardStats = {
+    todayMinutes: number;
+    todayGoalMinutes: number;
+    weekMinutes: number;
+    weekGoalMinutes: number;
+    topicsDone: number;
+    topicsTotal: number;
+    topicsDoneThisWeek: number;
+    currentStreak: number;
+    longestStreak: number;
+};
+
+export type DashboardSubject = {
+    id: number;
+    name: string;
+    topicsDone: number;
+    topicsTotal: number;
+    progress: number;
+    reviewStatus: ReviewStatus;
+};
+
+export type RecentSession = {
+    date: string;
+    subject: string;
+    durationMinutes: number;
+    activityType: ActivityType;
+    exercises: number | null;
+    accuracy: number | null;
+};
