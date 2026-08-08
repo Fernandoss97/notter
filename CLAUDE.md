@@ -231,7 +231,10 @@ Commands:
 - `php artisan test --compact --filter=testName` — fastest inner loop for a single test.
 
 Notes:
+- Prefer `--parallel` for the full suite — ~13s against ~22s serial (`composer test` and `composer test:browser` already pass it). It is a speed-up, not a correctness fix: serial passes too.
+- **A browser run that takes minutes is hung, not slow.** Every browser file finishes in 3-6s. The usual cause is a click waiting forever on an element that is present but unclickable (see the selector note below). Kill the run when it stalls, and check for orphan headless Chromium before retrying — they leave the next runs flaky, which is what makes the problem look intermittent and environmental.
 - `tests/Pest.php` binds `RefreshDatabase` for both `Feature` and `Browser` — every test gets a clean, migrated sqlite `:memory:` DB.
 - Browser tests need Playwright's Chromium installed once locally: `npx playwright install chromium` (already wired into `composer setup`).
+- In browser tests, never click by bare text when the label can appear twice. The persistent `SessionBar` stays in the DOM on the focus screen — collapsed and `inert`, but a text click resolves to it first and then waits forever on an invisible element. Scope the selector (`[data-slot="focus-timer"] button:text-is("Pausar")`). Parentheses in a label also break the CSS selector parser — use `button:has-text("…")` without them.
 - Browser tests render the actual built frontend. If `public/hot` is left over from a killed `npm run dev`, the page will load blank (pointing at a dead dev-server URL) — delete it, or just don't have a stale dev server running when you run browser tests.
 - `tests/Unit/ArchTest.php` enforces baseline structure (controllers/requests/models suffixes and extends, no `dd`/`dump`/`die` in `App`). Extend it as new conventions get established, don't bypass it.

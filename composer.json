@@ -78,7 +78,7 @@
             "@lint:check",
             "@types:check",
             "npm run test",
-            "@php artisan test"
+            "@php artisan test --parallel"
         ],
         "test:unit": [
             "@php artisan test --testsuite=Unit"
@@ -87,7 +87,7 @@
             "@php artisan test --testsuite=Feature"
         ],
         "test:browser": [
-            "@php artisan test --testsuite=Browser"
+            "@php artisan test --testsuite=Browser --parallel"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
