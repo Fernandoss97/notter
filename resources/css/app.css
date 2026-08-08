@@ -43,7 +43,18 @@
     --tracking-tight: -0.01em;
     --tracking-wide: 0.04em;
 
-    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    /* Movimento Notter — durações.
+       O Tailwind resolve `duration-*` pelo namespace `--transition-duration-*`;
+       tokens fora dele não geram utilitário nenhum. */
+    --transition-duration-instant: 80ms; /* :active, feedback de clique */
+    --transition-duration-fast: 120ms; /* hover, cor, anel de foco */
+    --transition-duration-base: 200ms; /* mudança de estado, progresso */
+    --transition-duration-slow: 320ms; /* entrada de painel / rota */
+
+    /* Movimento Notter — curvas assimétricas: entrada desacelera, saída acelera. */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1); /* entrada */
+    --ease-in: cubic-bezier(0.7, 0, 0.84, 0); /* saída */
+    --ease-standard: cubic-bezier(0.4, 0, 0.2, 1); /* reposicionamento */
 
     /* Largura máxima do conteúdo do app -> `max-w-app` */
     --container-app: 1440px;
@@ -170,10 +181,6 @@
         0 1px 2px oklch(25% 0.02 255 / 0.05);
     --elevation-lg: 0 16px 40px oklch(25% 0.02 255 / 0.14);
 
-    /* Transições — usadas por sidebar/timer */
-    --duration-fast: 120ms;
-    --duration-base: 200ms;
-
     /* shadcn slots -> tokens Aprova */
     --background: var(--bg);
     --foreground: var(--fg-1);
@@ -271,5 +278,63 @@
     button:disabled,
     [role='button'][aria-disabled='true'] {
         cursor: not-allowed;
+    }
+
+    /* Nenhum movimento do app sobrevive a `prefers-reduced-motion: reduce`.
+       1ms em vez de 0s de propósito: o Radix desmonta dialog/sheet ouvindo
+       `animationend`/`transitionend`, e com 0s esses eventos não disparam. */
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 1ms !important;
+            animation-delay: 0ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 1ms !important;
+            transition-delay: 0ms !important;
+            scroll-behavior: auto !important;
+        }
+    }
+}
+
+/* Entrada escalonada de itens de lista/grid. Comunica ordem de leitura sem
+   atrasar a percepção: o teto de 8 degraus evita que listas longas terminem
+   de entrar depois que o usuário já rolou. */
+@keyframes notter-enter {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+}
+
+@layer components {
+    .stagger-children > * {
+        animation: notter-enter var(--transition-duration-slow) var(--ease-out)
+            backwards;
+    }
+
+    .stagger-children > *:nth-child(1) {
+        animation-delay: 0ms;
+    }
+    .stagger-children > *:nth-child(2) {
+        animation-delay: 40ms;
+    }
+    .stagger-children > *:nth-child(3) {
+        animation-delay: 80ms;
+    }
+    .stagger-children > *:nth-child(4) {
+        animation-delay: 120ms;
+    }
+    .stagger-children > *:nth-child(5) {
+        animation-delay: 160ms;
+    }
+    .stagger-children > *:nth-child(6) {
+        animation-delay: 200ms;
+    }
+    .stagger-children > *:nth-child(7) {
+        animation-delay: 240ms;
+    }
+    .stagger-children > *:nth-child(n + 8) {
+        animation-delay: 280ms;
     }
 }

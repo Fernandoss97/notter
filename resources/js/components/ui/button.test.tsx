@@ -27,4 +27,24 @@ describe('Button', () => {
 
         expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
     });
+
+    // Regressão: a lista de transição não incluía `background-color`, então
+    // todo `hover:bg-*` das variantes trocava de cor sem transição alguma.
+    it('transitions the properties its variants actually change', () => {
+        render(<Button>Save</Button>);
+
+        const button = screen.getByRole('button', { name: 'Save' });
+        expect(button).toHaveClass(
+            'transition-[color,background-color,border-color,box-shadow,scale]',
+        );
+        expect(button).toHaveClass('duration-fast');
+    });
+
+    it('gives immediate press feedback on :active', () => {
+        render(<Button>Save</Button>);
+
+        const button = screen.getByRole('button', { name: 'Save' });
+        expect(button).toHaveClass('active:scale-[0.98]');
+        expect(button).toHaveClass('active:duration-instant');
+    });
 });
