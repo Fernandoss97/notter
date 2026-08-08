@@ -17,6 +17,7 @@ import { dashboard } from '@/routes';
 import { show as showFocus } from '@/routes/focus';
 import { index as showHistory } from '@/routes/history';
 import { index as showPlan } from '@/routes/plans';
+import { edit as showPomodoroSettings } from '@/routes/pomodoro-settings';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
@@ -45,7 +46,7 @@ const mainNavItems: NavItem[] = [
 const footerNavItems: NavItem[] = [
     {
         title: 'Configurações',
-        href: '/configuracoes',
+        href: showPomodoroSettings(),
         icon: Settings,
     },
 ];

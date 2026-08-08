@@ -116,3 +116,15 @@ export type HistoryFilters = {
     period: HistoryPeriod;
     type: HistoryTypeFilter;
 };
+
+export type PomodoroSettingFull = {
+    focusMinutes: number;
+    shortBreakMinutes: number;
+    longBreakMinutes: number;
+    cyclesBeforeLongBreak: number;
+    autoStartBreak: boolean;
+    autoStartFocus: boolean;
+    logSessionOnFinish: boolean;
+    silentModeDuringFocus: boolean;
+    excludeBreaksFromStudyTime: boolean;
+};

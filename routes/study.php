@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\FocusSessionController;
 use App\Http\Controllers\HistoryController;
+use App\Http\Controllers\PomodoroSettingController;
 use App\Http\Controllers\StudyPlanController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TopicController;
@@ -22,4 +23,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('plano/topics/{topic}/complete', [TopicController::class, 'complete'])->name('topics.complete');
 
     Route::get('historico', [HistoryController::class, 'index'])->name('history.index');
+
+    Route::get('configuracoes', [PomodoroSettingController::class, 'edit'])->name('pomodoro-settings.edit');
+    Route::put('configuracoes', [PomodoroSettingController::class, 'update'])->name('pomodoro-settings.update');
 });
