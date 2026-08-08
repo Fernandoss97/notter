@@ -34,12 +34,17 @@ describe('SessionBar', () => {
         vi.restoreAllMocks();
     });
 
-    it('renders nothing when there is no active session', () => {
+    it('renders no session content when there is no active session', () => {
         mockActiveSession(null);
 
         const { container } = render(<SessionBar />);
 
-        expect(container).toBeEmptyDOMElement();
+        // O invólucro fica montado (colapsado) para que a entrada da barra
+        // possa ser animada em vez de empurrar a página em 64px de uma vez.
+        expect(screen.queryByText('Em foco')).not.toBeInTheDocument();
+        expect(
+            container.querySelector('[data-slot="session-bar"]'),
+        ).toHaveAttribute('data-visible', 'false');
     });
 
     it('shows the running session subject, topic and elapsed time', () => {
@@ -61,7 +66,7 @@ describe('SessionBar', () => {
         ).toBeInTheDocument();
     });
 
-    it('renders nothing while already on the focus screen', () => {
+    it('collapses and hides itself from assistive tech on the focus screen', () => {
         mockActiveSession(
             {
                 id: 1,
@@ -76,7 +81,30 @@ describe('SessionBar', () => {
 
         const { container } = render(<SessionBar />);
 
-        expect(container).toBeEmptyDOMElement();
+        const bar = container.querySelector('[data-slot="session-bar"]');
+        expect(bar).toHaveAttribute('data-visible', 'false');
+        expect(bar?.firstElementChild).toHaveAttribute('aria-hidden', 'true');
+        expect(bar?.firstElementChild).toHaveAttribute('inert');
+        expect(
+            screen.queryByRole('link', { name: 'Abrir sessão' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('is expanded and reachable outside the focus screen', () => {
+        mockActiveSession({
+            id: 1,
+            subject: 'Álgebra Linear',
+            topic: 'Autovalores e autovetores',
+            state: 'running',
+            elapsedSeconds: 125,
+            plannedSeconds: 3000,
+        });
+
+        const { container } = render(<SessionBar />);
+
+        const bar = container.querySelector('[data-slot="session-bar"]');
+        expect(bar).toHaveAttribute('data-visible', 'true');
+        expect(bar?.firstElementChild).not.toHaveAttribute('inert');
     });
 
     it('shows the paused label for a paused session', () => {
