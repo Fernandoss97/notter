@@ -21,8 +21,11 @@ vi.mock('@inertiajs/react', () => ({
     ),
 }));
 
-function mockActiveSession(session: ActiveFocusSession | null) {
-    usePage.mockReturnValue({ props: { activeSession: session } });
+function mockActiveSession(
+    session: ActiveFocusSession | null,
+    url: string = '/dashboard',
+) {
+    usePage.mockReturnValue({ props: { activeSession: session }, url });
 }
 
 describe('SessionBar', () => {
@@ -56,6 +59,24 @@ describe('SessionBar', () => {
         expect(
             screen.getByText('Álgebra Linear · Autovalores e autovetores'),
         ).toBeInTheDocument();
+    });
+
+    it('renders nothing while already on the focus screen', () => {
+        mockActiveSession(
+            {
+                id: 1,
+                subject: 'Álgebra Linear',
+                topic: 'Autovalores e autovetores',
+                state: 'running',
+                elapsedSeconds: 125,
+                plannedSeconds: 3000,
+            },
+            '/foco',
+        );
+
+        const { container } = render(<SessionBar />);
+
+        expect(container).toBeEmptyDOMElement();
     });
 
     it('shows the paused label for a paused session', () => {

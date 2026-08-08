@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import { Dot } from '@/components/dot';
+import { useCurrentUrl } from '@/hooks/use-current-url';
 import { useLiveElapsedSeconds } from '@/hooks/use-live-elapsed-seconds';
 import { cn } from '@/lib/utils';
 import { show as showFocus } from '@/routes/focus';
@@ -14,8 +15,9 @@ function formatElapsed(totalSeconds: number): string {
 export function SessionBar() {
     const { activeSession } = usePage().props;
     const elapsedSeconds = useLiveElapsedSeconds(activeSession);
+    const { isCurrentUrl } = useCurrentUrl();
 
-    if (!activeSession) {
+    if (!activeSession || isCurrentUrl(showFocus())) {
         return null;
     }
 
