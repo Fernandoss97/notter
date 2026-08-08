@@ -3,8 +3,12 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+// O preenchimento ocupa a largura toda e desliza com `translateX`, em vez de
+// animar `width`: na tela de foco o valor muda 1x/s e animar largura fazia
+// layout + paint a cada tick. `translateX` também preserva o raio da ponta
+// direita, que `scaleX` achataria.
 const progressBarFillVariants = cva(
-  "h-full rounded-full transition-[width] duration-base ease-out",
+  "h-full w-full rounded-full transition-transform duration-base ease-out",
   {
     variants: {
       color: {
@@ -27,6 +31,7 @@ interface ProgressBarProps extends VariantProps<typeof progressBarFillVariants> 
   height?: number
   showLabel?: boolean
   className?: string
+  trackClassName?: string
 }
 
 function ProgressBar({
@@ -35,6 +40,7 @@ function ProgressBar({
   height = 8,
   showLabel = false,
   className,
+  trackClassName,
 }: ProgressBarProps) {
   const pct = Math.max(0, Math.min(100, value))
 
@@ -44,7 +50,7 @@ function ProgressBar({
       className={cn("flex w-full flex-col gap-1", className)}
     >
       <div
-        className="overflow-hidden rounded-full bg-muted"
+        className={cn("overflow-hidden rounded-full bg-muted", trackClassName)}
         style={{ height }}
       >
         <div
@@ -53,7 +59,7 @@ function ProgressBar({
           aria-valuemin={0}
           aria-valuemax={100}
           className={cn(progressBarFillVariants({ color }))}
-          style={{ width: `${pct}%` }}
+          style={{ transform: `translateX(-${100 - pct}%)` }}
         />
       </div>
       {showLabel && (

@@ -40,7 +40,10 @@ export function SessionsTable({ rows }: { rows: SessionRow[] }) {
             </thead>
             <tbody>
                 {rows.map((row, index) => (
-                    <tr key={index}>
+                    <tr
+                        key={index}
+                        className="transition-colors duration-fast ease-out hover:bg-muted/60"
+                    >
                         <td className={cn(td, 'font-mono text-xs text-fg-2')}>
                             {row.date}
                         </td>

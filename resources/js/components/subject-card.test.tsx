@@ -65,4 +65,38 @@ describe('SubjectCard', () => {
 
         expect(onClick).toHaveBeenCalledOnce();
     });
+
+    it('is a real button when clickable, reachable by keyboard', async () => {
+        const onClick = vi.fn();
+        render(
+            <SubjectCard
+                subject="Álgebra Linear"
+                topicsDone={12}
+                topicsTotal={20}
+                progress={60}
+                onClick={onClick}
+            />,
+        );
+
+        const card = screen.getByRole('button', { name: /Álgebra Linear/ });
+
+        await userEvent.tab();
+        expect(card).toHaveFocus();
+
+        await userEvent.keyboard('{Enter}');
+        expect(onClick).toHaveBeenCalledOnce();
+    });
+
+    it('stays a plain container when not clickable', () => {
+        render(
+            <SubjectCard
+                subject="Álgebra Linear"
+                topicsDone={12}
+                topicsTotal={20}
+                progress={60}
+            />,
+        );
+
+        expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    });
 });

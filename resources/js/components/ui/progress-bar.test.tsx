@@ -32,4 +32,28 @@ describe('ProgressBar', () => {
             'bg-status-success',
         );
     });
+
+    it('fills with a transform instead of animating width', () => {
+        render(<ProgressBar value={30} />);
+
+        const bar = screen.getByRole('progressbar');
+        expect(bar).toHaveStyle({ transform: 'translateX(-70%)' });
+        expect(bar.style.width).toBe('');
+    });
+
+    it('hides the fill entirely at zero', () => {
+        render(<ProgressBar value={0} />);
+
+        expect(screen.getByRole('progressbar')).toHaveStyle({
+            transform: 'translateX(-100%)',
+        });
+    });
+
+    it('lets the track colour be overridden', () => {
+        render(<ProgressBar value={50} trackClassName="bg-foreground/10" />);
+
+        expect(screen.getByRole('progressbar').parentElement).toHaveClass(
+            'bg-foreground/10',
+        );
+    });
 });

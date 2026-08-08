@@ -43,7 +43,13 @@ function SegmentedControl({
           data-slot="segmented-control-item"
           className={cn(
             "rounded-[6px] px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-muted-foreground",
+            // Crossfade do item selecionado em vez de troca seca. Um thumb
+            // deslizante exigiria medir posições em JS — custo alto para o
+            // pouco que comunicaria a mais.
+            "transition-[background-color,color,box-shadow,scale] duration-fast ease-out",
+            "hover:text-foreground",
             "data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-sm",
+            "active:scale-[0.97] active:duration-instant",
             "focus-visible:ring-ring/50 outline-none focus-visible:ring-[3px]"
           )}
         >
