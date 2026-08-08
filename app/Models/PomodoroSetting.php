@@ -43,7 +43,7 @@ class PomodoroSetting extends Model
         'auto_start_focus' => false,
         'log_session_on_finish' => true,
         'silent_mode_during_focus' => true,
-        'exclude_breaks_from_study_time' => false,
+        'exclude_breaks_from_study_time' => true,
     ];
 
     /**

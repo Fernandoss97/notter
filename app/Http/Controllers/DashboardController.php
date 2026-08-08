@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Study\ResolveCurrentFocusSession;
 use App\Concerns\FormatsStudySessionRows;
+use App\Concerns\SummarizesStudyTime;
 use App\Models\Enums\FocusSessionState;
 use App\Models\StudyPlan;
+use App\Models\StudySession;
 use App\Models\Subject;
 use App\Models\Topic;
 use App\Models\User;
-use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -17,11 +19,17 @@ use Inertia\Response;
 class DashboardController extends Controller
 {
     use FormatsStudySessionRows;
+    use SummarizesStudyTime;
+
+    public function __construct(private ResolveCurrentFocusSession $resolveCurrentSession) {}
 
     public function show(Request $request): Response
     {
         $user = $request->user();
         $plan = $user->activeStudyPlan()->with('subjects.topics.reviews')->first();
+        $settings = $user->pomodoroSetting()->firstOrCreate([]);
+        $excludeBreaks = $settings->exclude_breaks_from_study_time;
+        $activeSession = $this->resolveCurrentSession->handle($user);
 
         $subjects = [];
         $topicsDone = 0;
@@ -59,9 +67,9 @@ class DashboardController extends Controller
                 'weeklyGoalMinutes' => $plan->weekly_goal_minutes,
             ] : null,
             'stats' => [
-                'todayMinutes' => $this->minutesStudied($user, today(), today()->endOfDay()),
+                'todayMinutes' => $this->minutesStudied($user, today(), today()->endOfDay(), $excludeBreaks, $activeSession),
                 'todayGoalMinutes' => $plan instanceof StudyPlan ? (int) round($plan->weekly_goal_minutes / 7) : 0,
-                'weekMinutes' => $this->minutesStudied($user, $weekStart, now()->endOfWeek()),
+                'weekMinutes' => $this->minutesStudied($user, $weekStart, now()->endOfWeek(), $excludeBreaks, $activeSession),
                 'weekGoalMinutes' => $plan instanceof StudyPlan ? $plan->weekly_goal_minutes : 0,
                 'topicsDone' => $topicsDone,
                 'topicsTotal' => $topicsTotal,
@@ -76,27 +84,9 @@ class DashboardController extends Controller
                 ->latest('ended_at')
                 ->take(5)
                 ->get()
-                ->map($this->sessionRow(...))
+                ->map(fn (StudySession $session) => $this->sessionRow($session, $excludeBreaks))
                 ->all(),
         ]);
-    }
-
-    private function minutesStudied(User $user, CarbonInterface $from, CarbonInterface $to): int
-    {
-        $completedSeconds = (int) $user->studySessions()
-            ->where('state', FocusSessionState::Completed)
-            ->whereBetween('ended_at', [$from, $to])
-            ->sum('accumulated_seconds');
-
-        $active = $user->studySessions()
-            ->where('state', '!=', FocusSessionState::Completed)
-            ->first();
-
-        $activeSeconds = $active && $active->started_at->between($from, $to)
-            ? $active->elapsedSeconds()
-            : 0;
-
-        return (int) round(($completedSeconds + $activeSeconds) / 60);
     }
 
     /**

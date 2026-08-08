@@ -103,3 +103,25 @@ test('sessions belonging to another user are never shown', function () {
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page->where('total', 0));
 });
+
+test('the history duration follows the break preference', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+    $subject = Subject::factory()->for($plan)->create();
+    StudySession::factory()->for($user)->for($plan)->for($subject)->completed()->create([
+        'accumulated_seconds' => 3000,
+        'break_seconds' => 600,
+        'ended_at' => now(),
+    ]);
+
+    // Padrão: só o tempo de foco.
+    $this->actingAs($user)
+        ->get('/historico')
+        ->assertInertia(fn ($page) => $page->where('sessions.0.durationMinutes', 50));
+
+    $user->pomodoroSetting()->firstOrCreate([])->update(['exclude_breaks_from_study_time' => false]);
+
+    $this->actingAs($user)
+        ->get('/historico')
+        ->assertInertia(fn ($page) => $page->where('sessions.0.durationMinutes', 60));
+});

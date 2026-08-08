@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Concerns\FormatsStudySessionRows;
 use App\Models\Enums\ActivityType;
 use App\Models\Enums\FocusSessionState;
+use App\Models\StudySession;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -32,6 +33,7 @@ class HistoryController extends Controller
         $user = $request->user();
         $period = $request->string('period', '7')->toString();
         $type = $request->string('type', 'all')->toString();
+        $excludeBreaks = $user->pomodoroSetting()->firstOrCreate([])->exclude_breaks_from_study_time;
 
         $query = $user->studySessions()
             ->where('state', FocusSessionState::Completed)
@@ -53,7 +55,7 @@ class HistoryController extends Controller
             'sessions' => $query->latest('ended_at')
                 ->take(50)
                 ->get()
-                ->map($this->sessionRow(...))
+                ->map(fn (StudySession $session) => $this->sessionRow($session, $excludeBreaks))
                 ->all(),
         ]);
     }
