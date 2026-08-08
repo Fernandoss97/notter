@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Database\Factories\ReviewFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -51,5 +53,33 @@ class Review extends Model
     public function topic(): BelongsTo
     {
         return $this->belongsTo(Topic::class);
+    }
+
+    /**
+     * Revisões que pertencem ao usuário. `Review` está a três níveis do
+     * dono (topic -> subject -> studyPlan -> user), fora do alcance de um
+     * hasManyThrough, então o escopo é a única forma de nunca esquecer
+     * essa cadeia ao buscar ou autorizar uma revisão.
+     *
+     * @param  Builder<Review>  $query
+     */
+    #[Scope]
+    protected function forUser(Builder $query, User $user): void
+    {
+        $query->whereHas(
+            'topic.subject.studyPlan',
+            fn (Builder $plan) => $plan->where('user_id', $user->id)
+        );
+    }
+
+    /**
+     * Revisões pendentes cujo prazo já chegou (vencidas ou para hoje).
+     *
+     * @param  Builder<Review>  $query
+     */
+    #[Scope]
+    protected function due(Builder $query): void
+    {
+        $query->whereNull('completed_at')->whereDate('due_on', '<=', today());
     }
 }

@@ -3,6 +3,7 @@
 use App\Http\Controllers\FocusSessionController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\PomodoroSettingController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\StudyPlanController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TopicController;
@@ -13,7 +14,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('foco/start', [FocusSessionController::class, 'start'])->name('focus.start');
     Route::post('foco/pause', [FocusSessionController::class, 'pause'])->name('focus.pause');
     Route::post('foco/resume', [FocusSessionController::class, 'resume'])->name('focus.resume');
+    Route::post('foco/advance', [FocusSessionController::class, 'advance'])->name('focus.advance');
     Route::post('foco/complete', [FocusSessionController::class, 'complete'])->name('focus.complete');
+    Route::post('foco/notes', [FocusSessionController::class, 'notes'])->name('focus.notes');
 
     Route::get('plano', [StudyPlanController::class, 'index'])->name('plans.index');
     Route::post('plano', [StudyPlanController::class, 'store'])->name('plans.store');
@@ -22,6 +25,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('plano/subjects', [SubjectController::class, 'store'])->name('subjects.store');
     Route::post('plano/topics', [TopicController::class, 'store'])->name('topics.store');
     Route::post('plano/topics/{topic}/complete', [TopicController::class, 'complete'])->name('topics.complete');
+
+    Route::post('revisoes/{review}/complete', [ReviewController::class, 'complete'])->name('reviews.complete');
 
     Route::get('historico', [HistoryController::class, 'index'])->name('history.index');
 
