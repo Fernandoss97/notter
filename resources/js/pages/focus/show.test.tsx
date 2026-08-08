@@ -1,12 +1,12 @@
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import FocusShow from './show';
 import type {
     DueReview,
     FocusSession,
     PomodoroSettingSummary,
     StudyPlanSummary,
 } from '@/types/study';
+import FocusShow from './show';
 
 const { post, announcePhaseEnd } = vi.hoisted(() => ({
     post: vi.fn(),
