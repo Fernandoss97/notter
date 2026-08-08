@@ -205,6 +205,10 @@ class FocusSessionController extends Controller
      * is never more than one, and it is never addressed by ID from the
      * client — B7's single-active-session rule makes the lookup implicit.
      *
+     * Volta para a página de origem, não para a tela de foco: a barra de
+     * sessão persegue o usuário por todas as telas, e pausar a partir do
+     * plano não é um pedido para sair do plano.
+     *
      * @param  Closure(StudySession): StudySession  $handle
      */
     private function transition(Request $request, Closure $handle, ?string $successMessage = null): RedirectResponse
@@ -214,7 +218,7 @@ class FocusSessionController extends Controller
         if (! $session) {
             Inertia::flash('toast', ['type' => 'error', 'message' => __('Nenhuma sessão de foco em andamento.')]);
 
-            return to_route('focus.show');
+            return back();
         }
 
         try {
@@ -222,14 +226,14 @@ class FocusSessionController extends Controller
         } catch (InvalidFocusSessionTransitionException $exception) {
             Inertia::flash('toast', ['type' => 'error', 'message' => $exception->getMessage()]);
 
-            return to_route('focus.show');
+            return back();
         }
 
         if ($successMessage) {
             Inertia::flash('toast', ['type' => 'success', 'message' => $successMessage]);
         }
 
-        return to_route('focus.show');
+        return back();
     }
 
     private function currentSession(Request $request): ?StudySession

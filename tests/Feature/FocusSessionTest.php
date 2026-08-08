@@ -98,6 +98,7 @@ test('pausing the active session freezes elapsed time', function () {
     $this->travel(30)->seconds();
 
     $this->actingAs($user)
+        ->from(route('focus.show'))
         ->post('/foco/pause')
         ->assertRedirect(route('focus.show'));
 
@@ -110,6 +111,7 @@ test('resuming the paused session opens a new live segment', function () {
     $session = StudySession::factory()->for($user)->paused()->create();
 
     $this->actingAs($user)
+        ->from(route('focus.show'))
         ->post('/foco/resume')
         ->assertRedirect(route('focus.show'));
 
@@ -128,6 +130,7 @@ test('completing the active session registers subject, topic and accuracy', func
     ]);
 
     $this->actingAs($user)
+        ->from(route('focus.show'))
         ->post('/foco/complete', [
             'subject_id' => $subject->id,
             'topic_id' => $topic->id,
@@ -151,6 +154,7 @@ test('completing a session rejects exercises_correct greater than exercises_tota
     StudySession::factory()->for($user)->create(['state' => FocusSessionState::Running]);
 
     $this->actingAs($user)
+        ->from(route('focus.show'))
         ->post('/foco/complete', [
             'subject_id' => $subject->id,
             'activity_type' => ActivityType::Exercises->value,
@@ -164,6 +168,7 @@ test('transitioning without an active session flashes an error instead of failin
     $user = User::factory()->create();
 
     $this->actingAs($user)
+        ->from(route('focus.show'))
         ->post('/foco/pause')
         ->assertRedirect(route('focus.show'));
 });
@@ -185,6 +190,7 @@ test('advancing the phase closes the cycle and opens the break', function () {
     $this->travel(60)->seconds();
 
     $this->actingAs($user)
+        ->from(route('focus.show'))
         ->post('/foco/advance')
         ->assertRedirect(route('focus.show'));
 
@@ -261,6 +267,7 @@ test('a session can be closed without registering anything', function () {
     ]);
 
     $this->actingAs($user)
+        ->from(route('focus.show'))
         ->post('/foco/complete')
         ->assertRedirect(route('focus.show'));
 
@@ -365,6 +372,7 @@ test('completing a session keeps the notes typed during it', function () {
     // O formulário de encerramento não manda `notes` — quem as gravou foi
     // o autosave em /foco/notes.
     $this->actingAs($user)
+        ->from(route('focus.show'))
         ->post('/foco/complete', [
             'subject_id' => $subject->id,
             'activity_type' => ActivityType::Reading->value,
@@ -381,4 +389,38 @@ test('completing a session can still replace the notes when they are sent', func
     $this->actingAs($user)->post('/foco/complete', ['notes' => 'versão final']);
 
     expect($session->refresh()->notes)->toBe('versão final');
+});
+
+test('pausing from another screen keeps the user where they were', function () {
+    $user = User::factory()->create();
+    StudyPlan::factory()->for($user)->active()->create();
+    StudySession::factory()->for($user)->create();
+
+    // A barra de sessão segue o usuário por todas as telas: pausar a
+    // partir do plano não é um pedido para sair do plano.
+    $this->actingAs($user)
+        ->from('/plano')
+        ->post('/foco/pause')
+        ->assertRedirect('/plano');
+});
+
+test('resuming from another screen keeps the user where they were', function () {
+    $user = User::factory()->create();
+    StudyPlan::factory()->for($user)->active()->create();
+    StudySession::factory()->for($user)->paused()->create();
+
+    $this->actingAs($user)
+        ->from('/historico')
+        ->post('/foco/resume')
+        ->assertRedirect('/historico');
+});
+
+test('a refused transition also comes back to where it started', function () {
+    $user = User::factory()->create();
+    StudyPlan::factory()->for($user)->active()->create();
+
+    $this->actingAs($user)
+        ->from('/plano')
+        ->post('/foco/pause')
+        ->assertRedirect('/plano');
 });
