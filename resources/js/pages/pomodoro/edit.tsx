@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SegmentedControl } from '@/components/ui/segmented-control';
+import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { edit, update } from '@/routes/pomodoro-settings';
 import type { PomodoroSettingFull } from '@/types/study';
@@ -48,6 +49,7 @@ export default function PomodoroEdit({ settings }: PomodoroEditProps) {
                         subtitle="Preferências de foco e revisão"
                         actions={
                             <Button type="submit" disabled={form.processing}>
+                                {form.processing && <Spinner />}
                                 Salvar alterações
                             </Button>
                         }

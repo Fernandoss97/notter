@@ -78,7 +78,7 @@ export default function Dashboard({
                     </Panel>
                 ) : (
                     <>
-                        <div className="grid grid-cols-4 gap-6">
+                        <div className="stagger-children grid grid-cols-4 gap-6">
                             <StatTile
                                 label="Horas hoje"
                                 value={formatDurationMinutes(
@@ -145,9 +145,9 @@ export default function Dashboard({
                             />
                         </div>
 
-                        {subjects.length > 0 && (
-                            <Panel title="Disciplinas do plano">
-                                <div className="grid grid-cols-2 gap-4">
+                        <Panel title="Disciplinas do plano">
+                            {subjects.length > 0 ? (
+                                <div className="stagger-children grid grid-cols-2 gap-4">
                                     {subjects.map((subject) => (
                                         <SubjectCard
                                             key={subject.id}
@@ -159,14 +159,29 @@ export default function Dashboard({
                                         />
                                     ))}
                                 </div>
-                            </Panel>
-                        )}
+                            ) : (
+                                <div className="flex flex-col items-start gap-3 py-2">
+                                    <p className="text-sm text-fg-2">
+                                        Nenhuma disciplina neste plano ainda.
+                                    </p>
+                                    <Button asChild variant="secondary">
+                                        <Link href={showPlan()}>
+                                            Adicionar disciplina
+                                        </Link>
+                                    </Button>
+                                </div>
+                            )}
+                        </Panel>
 
-                        {sessionRows.length > 0 && (
-                            <Panel title="Histórico de sessões" pad={false}>
+                        <Panel title="Histórico de sessões" pad={false}>
+                            {sessionRows.length > 0 ? (
                                 <SessionsTable rows={sessionRows} />
-                            </Panel>
-                        )}
+                            ) : (
+                                <p className="px-5 py-8 text-center text-sm text-muted-foreground">
+                                    Sua primeira sessão de foco aparece aqui.
+                                </p>
+                            )}
+                        </Panel>
                     </>
                 )}
             </Page>

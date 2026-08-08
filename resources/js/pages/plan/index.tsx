@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { ReviewStatusBadge } from '@/components/ui/review-status-badge';
 import { SegmentedControl } from '@/components/ui/segmented-control';
+import { Spinner } from '@/components/ui/spinner';
 import { SUBJECT_PRIORITY_LABEL } from '@/lib/study-labels';
 import { cn } from '@/lib/utils';
 import { show as showFocus } from '@/routes/focus';
@@ -148,6 +149,7 @@ function CreatePlanPanel() {
                     disabled={form.processing}
                     className="w-fit"
                 >
+                    {form.processing && <Spinner />}
                     Criar plano
                 </Button>
             </form>
@@ -163,6 +165,7 @@ function ActivePlanView({
     plan: ActiveStudyPlan;
 }) {
     const [pendingPlanId, setPendingPlanId] = useState<number | null>(null);
+    const [pendingSubject, setPendingSubject] = useState<string | null>(null);
     const topicsTotal = plan.subjects.reduce(
         (total, subject) => total + subject.topics.length,
         0,
@@ -210,12 +213,27 @@ function ActivePlanView({
                 </div>
             )}
 
-            <AddSubjectPanel />
+            <AddSubjectPanel
+                onSubmitStart={setPendingSubject}
+                onSettled={() => setPendingSubject(null)}
+            />
 
-            <div className="flex flex-col gap-3">
+            <div className="stagger-children flex flex-col gap-3">
                 {plan.subjects.map((subject) => (
                     <SubjectRow key={subject.id} subject={subject} />
                 ))}
+                {pendingSubject && (
+                    // `animate-none` cancela o stagger: o eco do que acabou de
+                    // ser digitado precisa aparecer no mesmo frame do clique.
+                    <Panel className="animate-none opacity-60">
+                        <div className="text-md font-bold text-foreground">
+                            {pendingSubject}
+                        </div>
+                        <div className="mt-0.5 text-xs text-muted-foreground">
+                            Adicionando…
+                        </div>
+                    </Panel>
+                )}
             </div>
         </>
     );
@@ -316,6 +334,7 @@ function EditPlanDialog({ plan }: { plan: ActiveStudyPlan }) {
                             </Button>
                         </DialogClose>
                         <Button type="submit" disabled={form.processing}>
+                            {form.processing && <Spinner />}
                             Salvar alterações
                         </Button>
                     </DialogFooter>
@@ -325,7 +344,13 @@ function EditPlanDialog({ plan }: { plan: ActiveStudyPlan }) {
     );
 }
 
-function AddSubjectPanel() {
+function AddSubjectPanel({
+    onSubmitStart,
+    onSettled,
+}: {
+    onSubmitStart: (name: string) => void;
+    onSettled: () => void;
+}) {
     const form = useForm({
         name: '',
         priority: 'medium' as SubjectPriority,
@@ -343,9 +368,13 @@ function AddSubjectPanel() {
                 : null,
         }));
 
+        onSubmitStart(form.data.name.trim());
+
         form.post(storeSubject().url, {
             preserveScroll: true,
+            showProgress: false,
             onSuccess: () => form.reset(),
+            onFinish: onSettled,
         });
     }
 
@@ -402,6 +431,7 @@ function AddSubjectPanel() {
 }
 
 function SubjectRow({ subject }: { subject: PlanSubject }) {
+    const [pendingTopic, setPendingTopic] = useState<string | null>(null);
     const topicsDone = subject.topics.filter((t) => t.completed).length;
     const progress =
         subject.topics.length > 0
@@ -431,9 +461,23 @@ function SubjectRow({ subject }: { subject: PlanSubject }) {
                 {subject.topics.map((topic) => (
                     <TopicRow key={topic.id} topic={topic} />
                 ))}
+                {pendingTopic && (
+                    // Eco do tópico recém-digitado, no lugar em que ele vai
+                    // nascer, enquanto o servidor confirma.
+                    <div className="flex items-center gap-3 rounded-sm px-2 py-1.5 opacity-60">
+                        <div className="size-4 shrink-0 rounded-[4px] border border-border-strong" />
+                        <span className="flex-1 text-sm text-foreground">
+                            {pendingTopic}
+                        </span>
+                    </div>
+                )}
             </div>
 
-            <AddTopicForm subjectId={subject.id} />
+            <AddTopicForm
+                subjectId={subject.id}
+                onSubmitStart={setPendingTopic}
+                onSettled={() => setPendingTopic(null)}
+            />
         </Panel>
     );
 }
@@ -456,7 +500,7 @@ function TopicRow({ topic }: { topic: PlanSubject['topics'][number] }) {
     }
 
     return (
-        <div className="flex items-center gap-3 rounded-sm px-2 py-1.5 hover:bg-muted">
+        <div className="flex items-center gap-3 rounded-sm px-2 py-1.5 transition-colors duration-fast ease-out hover:bg-muted">
             <button
                 type="button"
                 onClick={completed ? undefined : markComplete}
@@ -468,16 +512,19 @@ function TopicRow({ topic }: { topic: PlanSubject['topics'][number] }) {
                 }
                 className={cn(
                     'flex size-4 shrink-0 items-center justify-center rounded-[4px] border text-[11px]',
+                    'transition-[background-color,border-color,color,box-shadow,scale] duration-fast ease-out',
+                    'outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
+                    'enabled:active:scale-90 enabled:active:duration-instant',
                     completed
                         ? 'border-transparent bg-status-success text-white'
-                        : 'border-border-strong bg-transparent',
+                        : 'border-border-strong bg-transparent hover:border-focus-500',
                 )}
             >
                 {completed && '✓'}
             </button>
             <span
                 className={cn(
-                    'flex-1 text-sm',
+                    'flex-1 text-sm transition-colors duration-base ease-out',
                     completed ? 'text-fg-2' : 'text-foreground',
                 )}
             >
@@ -490,7 +537,15 @@ function TopicRow({ topic }: { topic: PlanSubject['topics'][number] }) {
     );
 }
 
-function AddTopicForm({ subjectId }: { subjectId: number }) {
+function AddTopicForm({
+    subjectId,
+    onSubmitStart,
+    onSettled,
+}: {
+    subjectId: number;
+    onSubmitStart: (name: string) => void;
+    onSettled: () => void;
+}) {
     const form = useForm({ name: '' });
 
     function submit(event: FormEvent) {
@@ -498,9 +553,13 @@ function AddTopicForm({ subjectId }: { subjectId: number }) {
 
         form.transform((data) => ({ ...data, subject_id: subjectId }));
 
+        onSubmitStart(form.data.name.trim());
+
         form.post(storeTopic().url, {
             preserveScroll: true,
+            showProgress: false,
             onSuccess: () => form.reset(),
+            onFinish: onSettled,
         });
     }
 

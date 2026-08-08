@@ -17,6 +17,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
 import { useLiveElapsedSeconds } from '@/hooks/use-live-elapsed-seconds';
 import { ACTIVITY_TYPE_LABEL } from '@/lib/study-labels';
 import { cn } from '@/lib/utils';
@@ -190,6 +191,7 @@ function StartSessionPanel({ plan }: { plan: StudyPlanSummary }) {
                     disabled={form.processing}
                     className="w-fit"
                 >
+                    {form.processing && <Spinner />}
                     Iniciar sessão de foco
                 </Button>
             </form>
@@ -256,12 +258,13 @@ function ActiveSessionView({
                 <span
                     className={cn(
                         'flex items-center gap-2 text-xs font-bold tracking-wide uppercase',
+                        'transition-colors duration-base ease-out',
                         paused ? 'text-pausa-600' : 'text-focus-500',
                     )}
                 >
                     <span
                         className={cn(
-                            'size-1.5 rounded-full',
+                            'size-1.5 rounded-full transition-colors duration-base ease-out',
                             paused ? 'bg-pausa-500' : 'bg-focus-500',
                         )}
                     />
@@ -294,7 +297,7 @@ function ActiveSessionView({
                             <div
                                 key={index}
                                 className={cn(
-                                    'h-2 flex-1 rounded-full',
+                                    'h-2 flex-1 rounded-full transition-colors duration-base ease-out',
                                     done ? 'bg-focus-500' : 'bg-muted',
                                 )}
                             />
@@ -463,6 +466,7 @@ function CompleteSessionPanel({
                     disabled={form.processing}
                     variant="secondary"
                 >
+                    {form.processing && <Spinner />}
                     Encerrar sessão
                 </Button>
             </form>

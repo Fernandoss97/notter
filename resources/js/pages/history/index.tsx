@@ -1,4 +1,5 @@
 import { Head, router } from '@inertiajs/react';
+import { useState } from 'react';
 import { Page } from '@/components/page';
 import { PageHeader } from '@/components/page-header';
 import { Panel } from '@/components/panel';
@@ -7,6 +8,7 @@ import type { SessionRow } from '@/components/sessions-table';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { formatDurationMinutes } from '@/lib/format-duration';
 import { ACTIVITY_TYPE_LABEL } from '@/lib/study-labels';
+import { cn } from '@/lib/utils';
 import { index } from '@/routes/history';
 import type {
     HistoryFilters,
@@ -48,12 +50,24 @@ export default function HistoryIndex({
         accuracy: session.accuracy,
     }));
 
+    // O `value` dos controles vem do servidor; sem estado pendente o clique
+    // só "acontece" quando a resposta chega. Aqui a seleção move na hora e a
+    // tabela apenas esmaece enquanto os dados novos não chegam.
+    const [pendingFilters, setPendingFilters] =
+        useState<Partial<HistoryFilters> | null>(null);
+    const activeFilters = { ...filters, ...pendingFilters };
+
     function updateFilters(next: Partial<HistoryFilters>) {
-        router.get(
-            index().url,
-            { ...filters, ...next },
-            { preserveState: true, preserveScroll: true },
-        );
+        const target = { ...activeFilters, ...next };
+
+        setPendingFilters((current) => ({ ...current, ...next }));
+
+        router.get(index().url, target, {
+            preserveState: true,
+            preserveScroll: true,
+            showProgress: false,
+            onFinish: () => setPendingFilters(null),
+        });
     }
 
     return (
@@ -68,14 +82,14 @@ export default function HistoryIndex({
                 <div className="flex flex-wrap items-center gap-4">
                     <SegmentedControl
                         options={PERIOD_OPTIONS}
-                        value={filters.period}
+                        value={activeFilters.period}
                         onValueChange={(value) =>
                             updateFilters({ period: value as HistoryPeriod })
                         }
                     />
                     <SegmentedControl
                         options={TYPE_OPTIONS}
-                        value={filters.type}
+                        value={activeFilters.type}
                         onValueChange={(value) =>
                             updateFilters({
                                 type: value as HistoryTypeFilter,
@@ -93,7 +107,21 @@ export default function HistoryIndex({
                         </span>
                     }
                 >
-                    <SessionsTable rows={rows} />
+                    <div
+                        aria-busy={pendingFilters !== null}
+                        className={cn(
+                            'transition-opacity duration-fast ease-out',
+                            pendingFilters !== null && 'opacity-50',
+                        )}
+                    >
+                        {rows.length > 0 ? (
+                            <SessionsTable rows={rows} />
+                        ) : (
+                            <p className="px-5 py-8 text-center text-sm text-muted-foreground">
+                                Nenhuma sessão registrada neste período.
+                            </p>
+                        )}
+                    </div>
                 </Panel>
             </Page>
         </>
