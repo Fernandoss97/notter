@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Enums\ActivityType;
+use App\Models\Enums\FocusPhase;
 use App\Models\Enums\FocusSessionState;
 use App\Models\StudyPlan;
 use App\Models\StudySession;
@@ -30,14 +31,32 @@ class StudySessionFactory extends Factory
             'topic_id' => Topic::factory(),
             'activity_type' => null,
             'state' => FocusSessionState::Running,
+            'phase' => FocusPhase::Focus,
             'planned_seconds' => 50 * 60,
             'accumulated_seconds' => 0,
+            'phase_accumulated_seconds' => 0,
+            'break_seconds' => 0,
+            'completed_cycles' => 0,
             'started_at' => now(),
             'resumed_at' => now(),
             'ended_at' => null,
             'exercises_total' => null,
             'exercises_correct' => null,
+            'notes' => null,
         ];
+    }
+
+    /**
+     * Sessão no intervalo entre dois pomodoros.
+     */
+    public function onBreak(bool $long = false): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'phase' => $long ? FocusPhase::LongBreak : FocusPhase::ShortBreak,
+            'planned_seconds' => ($long ? 25 : 10) * 60,
+            'phase_accumulated_seconds' => 0,
+            'completed_cycles' => 1,
+        ]);
     }
 
     public function paused(): static

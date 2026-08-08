@@ -25,4 +25,9 @@ class InvalidFocusSessionTransitionException extends RuntimeException
     {
         return new self('A sessão já foi encerrada.');
     }
+
+    public static function phaseNotFinished(): self
+    {
+        return new self('O ciclo atual ainda não terminou.');
+    }
 }
