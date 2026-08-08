@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Study\ActivateStudyPlan;
 use App\Http\Requests\Study\StoreStudyPlanRequest;
+use App\Http\Requests\Study\UpdateStudyPlanRequest;
 use App\Models\StudyPlan;
 use App\Models\Subject;
 use App\Models\Topic;
@@ -60,6 +61,17 @@ class StudyPlanController extends Controller
         abort_unless($plan->user_id === $request->user()->id, 403);
 
         $action->handle($plan);
+
+        return to_route('plans.index');
+    }
+
+    public function update(UpdateStudyPlanRequest $request, StudyPlan $plan): RedirectResponse
+    {
+        abort_unless($plan->user_id === $request->user()->id, 403);
+
+        $plan->update($request->validated());
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Plano atualizado.')]);
 
         return to_route('plans.index');
     }

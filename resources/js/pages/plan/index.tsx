@@ -5,6 +5,15 @@ import { Page } from '@/components/page';
 import { PageHeader } from '@/components/page-header';
 import { Panel } from '@/components/panel';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ProgressBar } from '@/components/ui/progress-bar';
@@ -13,7 +22,12 @@ import { SegmentedControl } from '@/components/ui/segmented-control';
 import { SUBJECT_PRIORITY_LABEL } from '@/lib/study-labels';
 import { cn } from '@/lib/utils';
 import { show as showFocus } from '@/routes/focus';
-import { activate, index, store as storePlan } from '@/routes/plans';
+import {
+    activate,
+    index,
+    store as storePlan,
+    update as updatePlan,
+} from '@/routes/plans';
 import { store as storeSubject } from '@/routes/subjects';
 import {
     complete as completeTopic,
@@ -47,7 +61,7 @@ export default function PlanIndex({ plans, activePlan }: PlanIndexProps) {
     return (
         <>
             <Head title="Plano de estudos" />
-            <Page>
+            <Page maxWidth="narrow">
                 {!activePlan ? (
                     <CreatePlanPanel />
                 ) : (
@@ -78,7 +92,7 @@ function CreatePlanPanel() {
     return (
         <Panel title="Criar plano de estudos">
             <form onSubmit={submit} className="flex flex-col gap-4">
-                <div className="flex flex-col gap-2">
+                <div className="flex max-w-sm flex-col gap-2">
                     <Label htmlFor="plan_name">Nome do plano</Label>
                     <Input
                         id="plan_name"
@@ -160,9 +174,12 @@ function ActivePlanView({
                 title={plan.name}
                 subtitle={`${plan.type === 'contest' ? 'Concurso' : 'Estudo livre'} · ${plan.subjects.length} disciplinas · ${topicsTotal} tópicos`}
                 actions={
-                    <Button asChild>
-                        <Link href={showFocus()}>Estudar agora</Link>
-                    </Button>
+                    <>
+                        <EditPlanDialog plan={plan} />
+                        <Button asChild>
+                            <Link href={showFocus()}>Estudar agora</Link>
+                        </Button>
+                    </>
                 }
             />
 
@@ -201,6 +218,110 @@ function ActivePlanView({
                 ))}
             </div>
         </>
+    );
+}
+
+function EditPlanDialog({ plan }: { plan: ActiveStudyPlan }) {
+    const [open, setOpen] = useState(false);
+    const form = useForm({
+        name: plan.name,
+        type: plan.type,
+        weekly_goal_minutes: plan.weeklyGoalMinutes,
+    });
+
+    function submit(event: FormEvent) {
+        event.preventDefault();
+
+        form.put(updatePlan(plan.id).url, {
+            preserveScroll: true,
+            onSuccess: () => setOpen(false),
+        });
+    }
+
+    return (
+        <Dialog
+            open={open}
+            onOpenChange={(next) => {
+                setOpen(next);
+                form.clearErrors();
+                form.setData({
+                    name: plan.name,
+                    type: plan.type,
+                    weekly_goal_minutes: plan.weeklyGoalMinutes,
+                });
+            }}
+        >
+            <DialogTrigger asChild>
+                <Button variant="outline">Editar</Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Editar plano</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={submit} className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-2">
+                        <Label htmlFor="edit_plan_name">Nome do plano</Label>
+                        <Input
+                            id="edit_plan_name"
+                            value={form.data.name}
+                            onChange={(event) =>
+                                form.setData('name', event.target.value)
+                            }
+                        />
+                        {form.errors.name && (
+                            <p className="text-sm text-destructive">
+                                {form.errors.name}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                        <Label>Tipo do plano</Label>
+                        <SegmentedControl
+                            options={TYPE_OPTIONS}
+                            value={form.data.type}
+                            onValueChange={(value) =>
+                                form.setData('type', value as StudyPlanType)
+                            }
+                        />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                        <Label htmlFor="edit_plan_weekly_goal">
+                            Meta semanal (horas)
+                        </Label>
+                        <Input
+                            id="edit_plan_weekly_goal"
+                            type="number"
+                            min={1}
+                            value={form.data.weekly_goal_minutes / 60}
+                            onChange={(event) =>
+                                form.setData(
+                                    'weekly_goal_minutes',
+                                    Number(event.target.value || 0) * 60,
+                                )
+                            }
+                        />
+                        {form.errors.weekly_goal_minutes && (
+                            <p className="text-sm text-destructive">
+                                {form.errors.weekly_goal_minutes}
+                            </p>
+                        )}
+                    </div>
+
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button" variant="secondary">
+                                Cancelar
+                            </Button>
+                        </DialogClose>
+                        <Button type="submit" disabled={form.processing}>
+                            Salvar alterações
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
     );
 }
 

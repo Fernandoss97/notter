@@ -17,6 +17,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('plano', [StudyPlanController::class, 'index'])->name('plans.index');
     Route::post('plano', [StudyPlanController::class, 'store'])->name('plans.store');
+    Route::put('plano/{plan}', [StudyPlanController::class, 'update'])->name('plans.update');
     Route::post('plano/{plan}/activate', [StudyPlanController::class, 'activate'])->name('plans.activate');
     Route::post('plano/subjects', [SubjectController::class, 'store'])->name('subjects.store');
     Route::post('plano/topics', [TopicController::class, 'store'])->name('topics.store');

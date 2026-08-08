@@ -69,6 +69,39 @@ test('creating a second plan deactivates the first', function () {
     expect($user->activeStudyPlan?->name)->toBe('Segundo plano');
 });
 
+test('a plan can be updated', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create([
+        'name' => 'Concurso XYZ',
+        'type' => StudyPlanType::Free,
+        'weekly_goal_minutes' => 600,
+    ]);
+
+    $this->actingAs($user)->put("/plano/{$plan->id}", [
+        'name' => 'Concurso XYZ 2027',
+        'type' => StudyPlanType::Contest->value,
+        'weekly_goal_minutes' => 1200,
+    ])->assertRedirect(route('plans.index'));
+
+    $plan->refresh();
+    expect($plan->name)->toBe('Concurso XYZ 2027')
+        ->and($plan->type)->toBe(StudyPlanType::Contest)
+        ->and($plan->weekly_goal_minutes)->toBe(1200);
+});
+
+test('updating a plan requires ownership', function () {
+    $user = User::factory()->create();
+    $foreignPlan = StudyPlan::factory()->create();
+
+    $this->actingAs($user)
+        ->put("/plano/{$foreignPlan->id}", [
+            'name' => 'Nome indevido',
+            'type' => StudyPlanType::Free->value,
+            'weekly_goal_minutes' => 600,
+        ])
+        ->assertForbidden();
+});
+
 test('activating a plan requires ownership', function () {
     $user = User::factory()->create();
     $foreignPlan = StudyPlan::factory()->create();
