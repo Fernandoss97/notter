@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';
+import { Page } from '@/components/page';
 import { Panel } from '@/components/panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,7 +65,7 @@ export default function FocusShow({
     return (
         <>
             <Head title="Foco" />
-            <div className="mx-auto flex max-w-app flex-col gap-7 p-10">
+            <Page>
                 <div className="flex items-center justify-between">
                     <h1 className="text-xl font-bold text-foreground">
                         Sessão de foco
@@ -86,7 +87,7 @@ export default function FocusShow({
                 ) : (
                     <StartSessionPanel plan={plan} />
                 )}
-            </div>
+            </Page>
         </>
     );
 }
