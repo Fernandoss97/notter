@@ -68,16 +68,25 @@ describe('SessionBar', () => {
         ).toHaveAttribute('data-visible', 'false');
     });
 
-    it('shows the running session subject, topic and elapsed time', () => {
+    it('shows the running session subject, topic and remaining time', () => {
         mockActiveSession(session());
 
         render(<SessionBar />);
 
         expect(screen.getByText('Em foco')).toBeInTheDocument();
-        expect(screen.getByText('02:05')).toBeInTheDocument();
+        // Regressivo como o cronômetro da tela de foco: 3000 - 125.
+        expect(screen.getByText('47:55')).toBeInTheDocument();
         expect(
             screen.getByText('Álgebra Linear · Autovalores e autovetores'),
         ).toBeInTheDocument();
+    });
+
+    it('never shows negative time when the phase overruns', () => {
+        mockActiveSession(session({ elapsedSeconds: 3200 }));
+
+        render(<SessionBar />);
+
+        expect(screen.getByText('00:00')).toBeInTheDocument();
     });
 
     it('collapses and hides itself from assistive tech on the focus screen', () => {
@@ -147,25 +156,28 @@ describe('SessionBar', () => {
     });
 
     it('grows an hours field instead of overflowing the minutes', () => {
-        mockActiveSession(session({ elapsedSeconds: 10823 }));
+        // Uma pausa longa de 4h com 59min corridos: faltam 3:00:23.
+        mockActiveSession(
+            session({ elapsedSeconds: 3577, plannedSeconds: 14400 }),
+        );
 
         render(<SessionBar />);
 
         expect(screen.getByText('3:00:23')).toBeInTheDocument();
     });
 
-    it('ticks the elapsed time forward once a second while running', () => {
+    it('counts the remaining time down once a second while running', () => {
         vi.useFakeTimers();
-        mockActiveSession(session({ elapsedSeconds: 0 }));
+        mockActiveSession(session({ elapsedSeconds: 0, plannedSeconds: 60 }));
 
         render(<SessionBar />);
 
-        expect(screen.getByText('00:00')).toBeInTheDocument();
+        expect(screen.getByText('01:00')).toBeInTheDocument();
 
         act(() => {
             vi.advanceTimersByTime(3000);
         });
 
-        expect(screen.getByText('00:03')).toBeInTheDocument();
+        expect(screen.getByText('00:57')).toBeInTheDocument();
     });
 });

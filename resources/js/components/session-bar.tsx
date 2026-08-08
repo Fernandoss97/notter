@@ -28,6 +28,11 @@ export function SessionBar() {
     const onBreak = activeSession ? activeSession.phase !== 'focus' : false;
     const paused = pendingPaused ?? activeSession?.state === 'paused';
     const calm = onBreak || paused;
+    // Regressivo, como o cronômetro da tela de foco: os dois mostram o
+    // mesmo ciclo e não podem discordar sobre o que o número significa.
+    const remainingSeconds = activeSession
+        ? Math.max(0, activeSession.plannedSeconds - elapsedSeconds)
+        : 0;
     const progress = activeSession
         ? Math.min(
               100,
@@ -88,8 +93,12 @@ export function SessionBar() {
                         />
                         {paused ? 'Pausado' : onBreak ? 'Intervalo' : 'Em foco'}
                     </span>
-                    <span className="font-mono text-2xl font-semibold text-foreground tabular-nums">
-                        {formatClock(elapsedSeconds)}
+                    <span
+                        role="timer"
+                        aria-label={`Tempo restante: ${formatClock(remainingSeconds)}`}
+                        className="font-mono text-2xl font-semibold text-foreground tabular-nums"
+                    >
+                        {formatClock(remainingSeconds)}
                     </span>
                     <span className="text-base text-fg-2">
                         {activeSession.subject} · {activeSession.topic}
