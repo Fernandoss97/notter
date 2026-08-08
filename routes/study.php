@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\FocusSessionController;
+use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\StudyPlanController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TopicController;
@@ -19,4 +20,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('plano/subjects', [SubjectController::class, 'store'])->name('subjects.store');
     Route::post('plano/topics', [TopicController::class, 'store'])->name('topics.store');
     Route::post('plano/topics/{topic}/complete', [TopicController::class, 'complete'])->name('topics.complete');
+
+    Route::get('historico', [HistoryController::class, 'index'])->name('history.index');
 });

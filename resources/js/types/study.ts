@@ -107,3 +107,12 @@ export type RecentSession = {
     exercises: number | null;
     accuracy: number | null;
 };
+
+export type HistoryPeriod = '7' | '30' | 'all';
+
+export type HistoryTypeFilter = ActivityType | 'all';
+
+export type HistoryFilters = {
+    period: HistoryPeriod;
+    type: HistoryTypeFilter;
+};

@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import { show as showFocus } from '@/routes/focus';
+import { index as showHistory } from '@/routes/history';
 import { index as showPlan } from '@/routes/plans';
 import type { NavItem } from '@/types';
 
@@ -36,7 +37,7 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Histórico',
-        href: '/historico',
+        href: showHistory(),
         icon: History,
     },
 ];
