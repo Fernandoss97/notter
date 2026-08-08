@@ -2,7 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\Enums\FocusSessionState;
+use App\Actions\Study\ResolveCurrentFocusSession;
 use App\Models\StudySession;
 use App\Models\Subject;
 use App\Models\Topic;
@@ -11,6 +11,8 @@ use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
+    public function __construct(private ResolveCurrentFocusSession $resolveCurrentSession) {}
+
     /**
      * The root template that's loaded on the first page visit.
      *
@@ -51,7 +53,12 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * @return array{id: int, subject: string, topic: string, state: string, elapsedSeconds: int, plannedSeconds: int}|null
+     * A sessão corrente para a barra persistente. `elapsedSeconds` é o
+     * relógio da *fase*, não o total da sessão: depois do primeiro ciclo
+     * o total passaria dos `plannedSeconds` e a barra de progresso ficaria
+     * cravada em 100%.
+     *
+     * @return array{id: int, subject: string, topic: string, state: string, phase: string, elapsedSeconds: int, plannedSeconds: int}|null
      */
     private function activeSessionProp(Request $request): ?array
     {
@@ -61,11 +68,7 @@ class HandleInertiaRequests extends Middleware
             return null;
         }
 
-        $session = $user->studySessions()
-            ->where('state', '!=', FocusSessionState::Completed)
-            ->with(['subject', 'topic'])
-            ->latest()
-            ->first();
+        $session = $this->resolveCurrentSession->handle($user, ['subject', 'topic']);
 
         if (! $session instanceof StudySession) {
             return null;
@@ -79,7 +82,8 @@ class HandleInertiaRequests extends Middleware
             'subject' => $subject instanceof Subject ? $subject->name : __('Sessão livre'),
             'topic' => $topic instanceof Topic ? $topic->name : __('Sem tópico'),
             'state' => $session->state->value,
-            'elapsedSeconds' => $session->elapsedSeconds(),
+            'phase' => $session->phase->value,
+            'elapsedSeconds' => $session->phaseElapsedSeconds(),
             'plannedSeconds' => $session->planned_seconds,
         ];
     }

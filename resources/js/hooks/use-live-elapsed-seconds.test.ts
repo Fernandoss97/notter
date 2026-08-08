@@ -77,6 +77,45 @@ describe('useLiveElapsedSeconds', () => {
         expect(result.current).toBe(25);
     });
 
+    it('keeps up with the wall clock when the tab throttles the interval', () => {
+        vi.useFakeTimers();
+        const { result } = renderHook(() =>
+            useLiveElapsedSeconds({
+                id: 1,
+                state: 'running',
+                elapsedSeconds: 0,
+            }),
+        );
+
+        // Uma aba em segundo plano recebe ~1 disparo por minuto em vez de
+        // 60. Adiantar o relógio sem disparar os timers e só então deixar
+        // um tick passar reproduz exatamente isso: contar ticks daria 1s.
+        act(() => {
+            vi.setSystemTime(Date.now() + 60_000);
+            vi.advanceTimersByTime(1000);
+        });
+
+        expect(result.current).toBe(61);
+    });
+
+    it('recomputes as soon as the tab becomes visible again', () => {
+        vi.useFakeTimers();
+        const { result } = renderHook(() =>
+            useLiveElapsedSeconds({
+                id: 1,
+                state: 'running',
+                elapsedSeconds: 0,
+            }),
+        );
+
+        act(() => {
+            vi.setSystemTime(Date.now() + 120_000);
+            document.dispatchEvent(new Event('visibilitychange'));
+        });
+
+        expect(result.current).toBe(120);
+    });
+
     it('resets when switching to a different session', () => {
         const { result, rerender } = renderHook(
             ({ id, elapsedSeconds }) =>
