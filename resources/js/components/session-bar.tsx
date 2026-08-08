@@ -1,35 +1,53 @@
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 import { Dot } from '@/components/dot';
 import { Button } from '@/components/ui/button';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { useLiveElapsedSeconds } from '@/hooks/use-live-elapsed-seconds';
+import { formatClock } from '@/lib/format-duration';
 import { cn } from '@/lib/utils';
-import { show as showFocus } from '@/routes/focus';
-
-function formatElapsed(totalSeconds: number): string {
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-}
+import {
+    pause as pauseSession,
+    resume as resumeSession,
+    show as showFocus,
+} from '@/routes/focus';
 
 export function SessionBar() {
     const { activeSession } = usePage().props;
     const elapsedSeconds = useLiveElapsedSeconds(activeSession);
     const { isCurrentUrl } = useCurrentUrl();
+    const [pendingPaused, setPendingPaused] = useState<boolean | null>(null);
 
     // O invólucro fica sempre montado, mesmo sem sessão: é o que permite
     // animar a altura de 0 -> 64px em vez de o conteúdo da página saltar.
     const visible = Boolean(activeSession) && !isCurrentUrl(showFocus());
 
-    const paused = activeSession?.state === 'paused';
+    // A cor acompanha a *fase*: um intervalo em andamento é verde-água
+    // mesmo rodando, e o vermelho de foco não volta antes da hora.
+    const onBreak = activeSession ? activeSession.phase !== 'focus' : false;
+    const paused = pendingPaused ?? activeSession?.state === 'paused';
+    const calm = onBreak || paused;
     const progress = activeSession
         ? Math.min(
               100,
               Math.round((elapsedSeconds / activeSession.plannedSeconds) * 100),
           )
         : 0;
+
+    function toggle() {
+        const target = paused ? resumeSession() : pauseSession();
+        setPendingPaused(!paused);
+        router.post(
+            target.url,
+            {},
+            {
+                preserveScroll: true,
+                showProgress: false,
+                onFinish: () => setPendingPaused(null),
+            },
+        );
+    }
 
     return (
         <div
@@ -50,7 +68,7 @@ export function SessionBar() {
                         'flex h-16 items-center gap-5 border-b px-10',
                         'transition-[background-color,border-color,opacity,translate] duration-base ease-out',
                         visible ? 'opacity-100' : '-translate-y-2 opacity-0',
-                        paused
+                        calm
                             ? 'border-pausa-200 bg-pausa-100'
                             : 'border-focus-200 bg-focus-100',
                     )}
@@ -59,37 +77,49 @@ export function SessionBar() {
                         className={cn(
                             'flex items-center gap-2 text-sm font-bold tracking-wide uppercase',
                             'transition-colors duration-base ease-out',
-                            paused ? 'text-pausa-600' : 'text-focus-500',
+                            calm ? 'text-pausa-600' : 'text-focus-500',
                         )}
                     >
                         <Dot
                             className={cn(
                                 'size-2.5 transition-colors duration-base ease-out',
-                                paused ? 'bg-pausa-500' : 'bg-focus-500',
+                                calm ? 'bg-pausa-500' : 'bg-focus-500',
                             )}
                         />
-                        {paused ? 'Pausado' : 'Em foco'}
+                        {paused ? 'Pausado' : onBreak ? 'Intervalo' : 'Em foco'}
                     </span>
                     <span className="font-mono text-2xl font-semibold text-foreground tabular-nums">
-                        {formatElapsed(elapsedSeconds)}
+                        {formatClock(elapsedSeconds)}
                     </span>
                     <span className="text-base text-fg-2">
                         {activeSession.subject} · {activeSession.topic}
                     </span>
                     <ProgressBar
                         value={progress}
-                        color={paused ? 'pausa' : 'focus'}
+                        color={calm ? 'pausa' : 'focus'}
                         height={6}
                         className="max-w-[320px] flex-1"
                         trackClassName="bg-foreground/10"
                     />
                     <div className="flex-1" />
                     <Button
+                        variant="ghost"
+                        onClick={toggle}
+                        className={cn(
+                            'font-semibold',
+                            calm
+                                ? 'text-pausa-600 hover:bg-pausa-200 hover:text-pausa-600'
+                                : 'text-focus-500 hover:bg-focus-200 hover:text-focus-500',
+                        )}
+                    >
+                        {paused ? 'Retomar' : 'Pausar'}
+                    </Button>
+                    <Button
                         asChild
                         variant="outline"
                         className={cn(
                             'bg-transparent font-semibold',
-                            paused
+                            calm
                                 ? 'border-pausa-500 text-pausa-600 hover:bg-pausa-200 hover:text-pausa-600'
                                 : 'border-focus-500 text-focus-500 hover:bg-focus-200 hover:text-focus-500',
                         )}

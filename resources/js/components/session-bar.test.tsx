@@ -1,12 +1,17 @@
 import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ActiveFocusSession } from '@/types/session';
 import { SessionBar } from './session-bar';
 
-const { usePage } = vi.hoisted(() => ({ usePage: vi.fn() }));
+const { usePage, post } = vi.hoisted(() => ({
+    usePage: vi.fn(),
+    post: vi.fn(),
+}));
 
 vi.mock('@inertiajs/react', () => ({
     usePage,
+    router: { post },
     Link: ({
         href,
         children,
@@ -21,17 +26,33 @@ vi.mock('@inertiajs/react', () => ({
     ),
 }));
 
+function session(
+    overrides: Partial<ActiveFocusSession> = {},
+): ActiveFocusSession {
+    return {
+        id: 1,
+        subject: 'Álgebra Linear',
+        topic: 'Autovalores e autovetores',
+        state: 'running',
+        phase: 'focus',
+        elapsedSeconds: 125,
+        plannedSeconds: 3000,
+        ...overrides,
+    };
+}
+
 function mockActiveSession(
-    session: ActiveFocusSession | null,
+    active: ActiveFocusSession | null,
     url: string = '/dashboard',
 ) {
-    usePage.mockReturnValue({ props: { activeSession: session }, url });
+    usePage.mockReturnValue({ props: { activeSession: active }, url });
 }
 
 describe('SessionBar', () => {
     afterEach(() => {
         vi.useRealTimers();
         vi.restoreAllMocks();
+        post.mockReset();
     });
 
     it('renders no session content when there is no active session', () => {
@@ -48,14 +69,7 @@ describe('SessionBar', () => {
     });
 
     it('shows the running session subject, topic and elapsed time', () => {
-        mockActiveSession({
-            id: 1,
-            subject: 'Álgebra Linear',
-            topic: 'Autovalores e autovetores',
-            state: 'running',
-            elapsedSeconds: 125,
-            plannedSeconds: 3000,
-        });
+        mockActiveSession(session());
 
         render(<SessionBar />);
 
@@ -67,17 +81,7 @@ describe('SessionBar', () => {
     });
 
     it('collapses and hides itself from assistive tech on the focus screen', () => {
-        mockActiveSession(
-            {
-                id: 1,
-                subject: 'Álgebra Linear',
-                topic: 'Autovalores e autovetores',
-                state: 'running',
-                elapsedSeconds: 125,
-                plannedSeconds: 3000,
-            },
-            '/foco',
-        );
+        mockActiveSession(session(), '/foco');
 
         const { container } = render(<SessionBar />);
 
@@ -91,14 +95,7 @@ describe('SessionBar', () => {
     });
 
     it('is expanded and reachable outside the focus screen', () => {
-        mockActiveSession({
-            id: 1,
-            subject: 'Álgebra Linear',
-            topic: 'Autovalores e autovetores',
-            state: 'running',
-            elapsedSeconds: 125,
-            plannedSeconds: 3000,
-        });
+        mockActiveSession(session());
 
         const { container } = render(<SessionBar />);
 
@@ -108,29 +105,24 @@ describe('SessionBar', () => {
     });
 
     it('shows the paused label for a paused session', () => {
-        mockActiveSession({
-            id: 1,
-            subject: 'Espanhol',
-            topic: 'Verbos irregulares',
-            state: 'paused',
-            elapsedSeconds: 60,
-            plannedSeconds: 1500,
-        });
+        mockActiveSession(session({ state: 'paused' }));
 
         render(<SessionBar />);
 
         expect(screen.getByText('Pausado')).toBeInTheDocument();
     });
 
+    it('calls a running break an interval, not focus', () => {
+        mockActiveSession(session({ phase: 'short_break' }));
+
+        render(<SessionBar />);
+
+        expect(screen.getByText('Intervalo')).toBeInTheDocument();
+        expect(screen.queryByText('Em foco')).not.toBeInTheDocument();
+    });
+
     it('links to the focus screen', () => {
-        mockActiveSession({
-            id: 1,
-            subject: 'Espanhol',
-            topic: 'Verbos irregulares',
-            state: 'running',
-            elapsedSeconds: 60,
-            plannedSeconds: 1500,
-        });
+        mockActiveSession(session());
 
         render(<SessionBar />);
 
@@ -139,16 +131,32 @@ describe('SessionBar', () => {
         ).toHaveAttribute('href', '/foco');
     });
 
+    it('pauses without leaving the current page', async () => {
+        mockActiveSession(session());
+
+        render(<SessionBar />);
+
+        await userEvent.click(screen.getByRole('button', { name: 'Pausar' }));
+
+        // `router.post` está mockado e nunca devolve props novas: se o
+        // rótulo dependesse do servidor, continuaria em "Pausar".
+        expect(post).toHaveBeenCalledOnce();
+        expect(
+            screen.getByRole('button', { name: 'Retomar' }),
+        ).toBeInTheDocument();
+    });
+
+    it('grows an hours field instead of overflowing the minutes', () => {
+        mockActiveSession(session({ elapsedSeconds: 10823 }));
+
+        render(<SessionBar />);
+
+        expect(screen.getByText('3:00:23')).toBeInTheDocument();
+    });
+
     it('ticks the elapsed time forward once a second while running', () => {
         vi.useFakeTimers();
-        mockActiveSession({
-            id: 1,
-            subject: 'Cálculo II',
-            topic: 'Integrais',
-            state: 'running',
-            elapsedSeconds: 0,
-            plannedSeconds: 3000,
-        });
+        mockActiveSession(session({ elapsedSeconds: 0 }));
 
         render(<SessionBar />);
 

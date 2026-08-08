@@ -4,15 +4,23 @@ export type ActivityType = 'reading' | 'exercises' | 'review' | 'practice';
 
 export type FocusSessionState = 'running' | 'paused' | 'completed';
 
+/**
+ * O que está rodando, ortogonal a *como* está rodando: pausar durante um
+ * intervalo é legítimo, por isso a fase não vive dentro do estado.
+ */
+export type FocusPhase = 'focus' | 'short_break' | 'long_break';
+
 export type TopicSummary = {
     id: number;
     name: string;
+    completed: boolean;
     reviewStatus: ReviewStatus;
 };
 
 export type SubjectSummary = {
     id: number;
     name: string;
+    priority: SubjectPriority;
     topics: TopicSummary[];
 };
 
@@ -28,8 +36,30 @@ export type FocusSession = {
     topicId: number | null;
     activityType: ActivityType | null;
     state: FocusSessionState;
+    phase: FocusPhase;
+    /** Relógio da fase corrente — zera a cada troca de fase. */
     elapsedSeconds: number;
     plannedSeconds: number;
+    /** Tempo de foco somado da sessão inteira, sem os intervalos. */
+    focusSeconds: number;
+    completedCycles: number;
+    notes: string;
+};
+
+export type TodayProgress = {
+    minutes: number;
+    goalMinutes: number;
+};
+
+export type DueReview = {
+    id: number;
+    subjectId: number;
+    subjectName: string;
+    topicId: number;
+    topicName: string;
+    sequence: number;
+    dueOn: string;
+    overdue: boolean;
 };
 
 export type PomodoroSettingSummary = {
@@ -37,6 +67,10 @@ export type PomodoroSettingSummary = {
     shortBreakMinutes: number;
     longBreakMinutes: number;
     cyclesBeforeLongBreak: number;
+    autoStartBreak: boolean;
+    autoStartFocus: boolean;
+    logSessionOnFinish: boolean;
+    silentModeDuringFocus: boolean;
 };
 
 export type SubjectPriority = 'low' | 'medium' | 'high';

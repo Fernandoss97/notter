@@ -1,14 +1,23 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import { FocusTimer } from '@/components/focus-timer';
 import InputError from '@/components/input-error';
 import { Page } from '@/components/page';
 import { Panel } from '@/components/panel';
+import { ReviewQueue } from '@/components/review-queue';
+import { SessionNotes } from '@/components/session-notes';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ProgressBar } from '@/components/ui/progress-bar';
-import { ReviewStatusBadge } from '@/components/ui/review-status-badge';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import {
     Select,
@@ -18,11 +27,19 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import { useDocumentTitle } from '@/hooks/use-document-title';
+import { useHotkeys } from '@/hooks/use-hotkeys';
 import { useLiveElapsedSeconds } from '@/hooks/use-live-elapsed-seconds';
-import { ACTIVITY_TYPE_LABEL } from '@/lib/study-labels';
-import { cn } from '@/lib/utils';
-import { dashboard } from '@/routes';
 import {
+    announcePhaseEnd,
+    requestNotificationPermission,
+} from '@/lib/focus-alerts';
+import { formatClock, formatDurationMinutes } from '@/lib/format-duration';
+import { ACTIVITY_TYPE_LABEL } from '@/lib/study-labels';
+import { suggestNextStudy } from '@/lib/study-suggestion';
+import { cn } from '@/lib/utils';
+import {
+    advance as advancePhase,
     complete as completeSession,
     pause as pauseSession,
     resume as resumeSession,
@@ -32,64 +49,61 @@ import {
 import { index as showPlan } from '@/routes/plans';
 import type {
     ActivityType,
+    DueReview,
     FocusSession,
     PomodoroSettingSummary,
     StudyPlanSummary,
+    TodayProgress,
 } from '@/types/study';
 
 const ACTIVITY_OPTIONS: { value: ActivityType; label: string }[] = (
     Object.entries(ACTIVITY_TYPE_LABEL) as [ActivityType, string][]
 ).map(([value, label]) => ({ value, label }));
 
-function formatElapsed(totalSeconds: number): string {
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    const mm = String(minutes).padStart(2, '0');
-    const ss = String(seconds).padStart(2, '0');
-
-    return hours > 0 ? `${hours}:${mm}:${ss}` : `${mm}:${ss}`;
-}
-
 interface FocusShowProps {
     plan: StudyPlanSummary | null;
     session: FocusSession | null;
     pomodoroSetting: PomodoroSettingSummary;
-    todayCycles: number;
+    todayPomodoros: number;
+    today: TodayProgress;
+    dueReviews: DueReview[];
 }
 
 export default function FocusShow({
     plan,
     session,
     pomodoroSetting,
-    todayCycles,
+    todayPomodoros,
+    today,
+    dueReviews,
 }: FocusShowProps) {
     return (
         <>
             <Head title="Foco" />
-            <Page>
-                <div className="flex items-center justify-between">
-                    <h1 className="text-xl font-bold text-foreground">
-                        Sessão de foco
-                    </h1>
-                    <Button variant="ghost" asChild>
-                        <Link href={dashboard()}>← Voltar ao dashboard</Link>
-                    </Button>
-                </div>
-
-                {!plan ? (
+            {!plan ? (
+                <Page>
                     <EmptyPlanState />
-                ) : session ? (
-                    <ActiveSessionView
-                        session={session}
+                </Page>
+            ) : session ? (
+                <ActiveSessionView
+                    session={session}
+                    plan={plan}
+                    pomodoroSetting={pomodoroSetting}
+                    todayPomodoros={todayPomodoros}
+                    today={today}
+                    dueReviews={dueReviews}
+                />
+            ) : (
+                <Page>
+                    <IdleView
                         plan={plan}
-                        pomodoroSetting={pomodoroSetting}
-                        todayCycles={todayCycles}
+                        today={today}
+                        todayPomodoros={todayPomodoros}
+                        dueReviews={dueReviews}
+                        focusMinutes={pomodoroSetting.focusMinutes}
                     />
-                ) : (
-                    <StartSessionPanel plan={plan} />
-                )}
-            </Page>
+                </Page>
+            )}
         </>
     );
 }
@@ -101,21 +115,144 @@ FocusShow.layout = {
 function EmptyPlanState() {
     return (
         <Panel>
-            <p className="text-sm text-fg-2">
-                Você ainda não tem um plano de estudos ativo. Crie um plano para
-                começar uma sessão de foco.
-            </p>
-            <Button asChild className="w-fit">
-                <Link href={showPlan()}>Criar plano de estudos</Link>
-            </Button>
+            <div className="flex flex-col items-center gap-4 py-10 text-center">
+                <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+                    Comece pelo seu plano
+                </h1>
+                <p className="max-w-md text-sm text-fg-2">
+                    Um plano guarda as disciplinas e os tópicos que você vai
+                    estudar. É a partir dele que as sessões de foco e as
+                    revisões espaçadas acontecem.
+                </p>
+                <Button asChild>
+                    <Link href={showPlan()}>Criar plano de estudos</Link>
+                </Button>
+            </div>
         </Panel>
     );
 }
 
-function StartSessionPanel({ plan }: { plan: StudyPlanSummary }) {
+/**
+ * A tela sem sessão em andamento: a decisão do que estudar, com o
+ * progresso do dia e a fila de revisões ao lado para embasá-la.
+ */
+function IdleView({
+    plan,
+    today,
+    todayPomodoros,
+    dueReviews,
+    focusMinutes,
+}: {
+    plan: StudyPlanSummary;
+    today: TodayProgress;
+    todayPomodoros: number;
+    dueReviews: DueReview[];
+    focusMinutes: number;
+}) {
+    const [preset, setPreset] = useState<{
+        subjectId: number;
+        topicId: number | null;
+    } | null>(null);
+
+    return (
+        <>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+                        Pronto para focar
+                    </h1>
+                    <p className="mt-0.5 text-sm text-fg-2">
+                        {plan.name} · ciclos de {focusMinutes} minutos
+                    </p>
+                </div>
+                <TodaySummary today={today} pomodoros={todayPomodoros} inline />
+            </div>
+
+            <div className="grid grid-cols-[1fr_360px] items-start gap-6">
+                {/* A `key` remonta o formulário quando a fila ao lado
+                    escolhe um tópico: é o jeito React de reiniciar estado
+                    a partir de uma prop, sem sincronizar em efeito. */}
+                <StartSessionPanel
+                    key={
+                        preset
+                            ? `${preset.subjectId}-${preset.topicId}`
+                            : 'suggested'
+                    }
+                    plan={plan}
+                    preset={preset}
+                />
+                <ReviewQueue
+                    reviews={dueReviews}
+                    onStudy={(review) =>
+                        setPreset({
+                            subjectId: review.subjectId,
+                            topicId: review.topicId,
+                        })
+                    }
+                />
+            </div>
+        </>
+    );
+}
+
+function TodaySummary({
+    today,
+    pomodoros,
+    inline = false,
+}: {
+    today: TodayProgress;
+    pomodoros: number;
+    inline?: boolean;
+}) {
+    const progress =
+        today.goalMinutes > 0
+            ? Math.min(
+                  100,
+                  Math.round((today.minutes / today.goalMinutes) * 100),
+              )
+            : 0;
+
+    const content = (
+        <>
+            <div className="flex items-baseline justify-between gap-3">
+                <span className="font-mono text-lg font-semibold text-foreground tabular-nums">
+                    {formatDurationMinutes(today.minutes)}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                    meta {formatDurationMinutes(today.goalMinutes)}
+                </span>
+            </div>
+            <ProgressBar value={progress} color="focus" height={6} />
+            <span className="text-xs text-muted-foreground">
+                {pomodoros} pomodoro{pomodoros === 1 ? '' : 's'} hoje
+            </span>
+        </>
+    );
+
+    if (inline) {
+        return (
+            <div className="flex w-56 flex-col gap-1.5 text-right">
+                {content}
+            </div>
+        );
+    }
+
+    return <Panel title="Hoje">{content}</Panel>;
+}
+
+function StartSessionPanel({
+    plan,
+    preset,
+}: {
+    plan: StudyPlanSummary;
+    preset: { subjectId: number; topicId: number | null } | null;
+}) {
+    const suggestion = suggestNextStudy(plan.subjects);
+    const initial = preset ?? suggestion;
+
     const form = useForm({
-        subject_id: '',
-        topic_id: '',
+        subject_id: initial ? String(initial.subjectId) : '',
+        topic_id: initial?.topicId ? String(initial.topicId) : '',
     });
 
     const subject = plan.subjects.find(
@@ -124,6 +261,8 @@ function StartSessionPanel({ plan }: { plan: StudyPlanSummary }) {
 
     function submit(event: FormEvent) {
         event.preventDefault();
+
+        requestNotificationPermission();
 
         form.transform((data) => ({
             subject_id: data.subject_id || null,
@@ -203,20 +342,24 @@ function ActiveSessionView({
     session,
     plan,
     pomodoroSetting,
-    todayCycles,
+    todayPomodoros,
+    today,
+    dueReviews,
 }: {
     session: FocusSession;
     plan: StudyPlanSummary;
     pomodoroSetting: PomodoroSettingSummary;
-    todayCycles: number;
+    todayPomodoros: number;
+    today: TodayProgress;
+    dueReviews: DueReview[];
 }) {
     const elapsedSeconds = useLiveElapsedSeconds(session);
     const [pendingPaused, setPendingPaused] = useState<boolean | null>(null);
+    const [zen, setZen] = useState(false);
+    const [completeOpen, setCompleteOpen] = useState(false);
     const paused = pendingPaused ?? session.state === 'paused';
-    const progress = Math.min(
-        100,
-        Math.round((elapsedSeconds / session.plannedSeconds) * 100),
-    );
+    const onBreak = session.phase !== 'focus';
+    const finished = elapsedSeconds >= session.plannedSeconds;
 
     const currentSubject = plan.subjects.find(
         (s) => s.id === session.subjectId,
@@ -239,96 +382,175 @@ function ActiveSessionView({
         );
     }
 
-    const cyclesTotal = pomodoroSetting.cyclesBeforeLongBreak;
-    const cycles = Array.from(
-        { length: cyclesTotal },
-        (_, i) => i < todayCycles,
+    function advance(skip = false) {
+        router.post(advancePhase().url, skip ? { skip: true } : {}, {
+            preserveScroll: true,
+            showProgress: false,
+        });
+    }
+
+    // Uma requisição por fim de ciclo. As dependências do efeito já dão
+    // conta dos ticks; o ref cobre o caso em que `finished` oscila dentro
+    // da mesma fase — um advance recusado pelo servidor ressincroniza o
+    // relógio para trás e faria o efeito disparar de novo.
+    const advancedFor = useRef<string | null>(null);
+    const phaseKey = `${session.id}:${session.phase}:${session.completedCycles}`;
+
+    useEffect(() => {
+        if (!finished || advancedFor.current === phaseKey) {
+            return;
+        }
+
+        advancedFor.current = phaseKey;
+
+        announcePhaseEnd(
+            onBreak ? 'Intervalo terminado' : 'Ciclo concluído',
+            onBreak
+                ? 'Hora de voltar ao foco.'
+                : `Pausa de ${pomodoroSetting.shortBreakMinutes} minutos.`,
+        );
+
+        const autoStart = onBreak
+            ? pomodoroSetting.autoStartFocus
+            : pomodoroSetting.autoStartBreak;
+
+        // Mesmo sem auto-start o avanço é enviado: é ele que fecha o ciclo
+        // no servidor. A diferença é que a próxima fase nasce pausada.
+        if (autoStart || !paused) {
+            advance();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [finished, phaseKey]);
+
+    const remainingSeconds = Math.max(
+        0,
+        session.plannedSeconds - elapsedSeconds,
     );
 
-    return (
-        <div className="grid grid-cols-[1fr_360px] items-start gap-6">
-            <div className="flex flex-col items-center justify-center gap-6 rounded-md border border-border bg-card p-10 shadow-sm">
-                {currentTopic && (
-                    <ReviewStatusBadge
-                        status={currentTopic.reviewStatus ?? 'ontrack'}
-                        label={`${currentSubject?.name} · ${currentTopic.name}`}
-                    />
-                )}
+    useDocumentTitle(
+        `${formatClock(remainingSeconds)} · ${
+            paused
+                ? 'Pausado'
+                : onBreak
+                  ? 'Intervalo'
+                  : (currentSubject?.name ?? 'Foco')
+        }`,
+    );
 
-                <span
-                    className={cn(
-                        'flex items-center gap-2 text-xs font-bold tracking-wide uppercase',
-                        'transition-colors duration-base ease-out',
-                        paused ? 'text-pausa-600' : 'text-focus-500',
-                    )}
-                >
-                    <span
-                        className={cn(
-                            'size-1.5 rounded-full transition-colors duration-base ease-out',
-                            paused ? 'bg-pausa-500' : 'bg-focus-500',
-                        )}
-                    />
-                    {paused ? 'Pausado' : 'Em foco'}
-                </span>
+    useHotkeys({
+        ' ': () => (finished ? advance() : toggle()),
+        f: () => setZen((on) => !on),
+        escape: () => setZen(false),
+        e: () => setCompleteOpen(true),
+    });
 
-                <span className="font-mono text-timer text-foreground tabular-nums">
-                    {formatElapsed(elapsedSeconds)}
-                </span>
+    const timer = (
+        <FocusTimer
+            phase={session.phase}
+            paused={paused}
+            elapsedSeconds={elapsedSeconds}
+            plannedSeconds={session.plannedSeconds}
+            completedCycles={session.completedCycles}
+            cyclesBeforeLongBreak={pomodoroSetting.cyclesBeforeLongBreak}
+            subjectLabel={currentSubject?.name ?? null}
+            topicLabel={currentTopic?.name ?? null}
+            reviewStatus={currentTopic?.reviewStatus}
+            zen={zen}
+            onToggle={toggle}
+            onAdvance={() => advance()}
+            onSkipBreak={() => advance(true)}
+        />
+    );
 
-                <div className="w-full max-w-[320px]">
-                    <ProgressBar
-                        value={progress}
-                        color={paused ? 'pausa' : 'focus'}
-                    />
-                </div>
-
-                <Button
-                    onClick={toggle}
-                    variant={paused ? 'default' : 'secondary'}
-                >
-                    {paused ? 'Retomar' : 'Pausar'}
+    if (zen) {
+        return (
+            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-background">
+                {timer}
+                <Button variant="ghost" onClick={() => setZen(false)}>
+                    Sair do modo zen (Esc)
                 </Button>
             </div>
+        );
+    }
 
-            <div className="flex flex-col gap-5">
-                <Panel title="Ciclo de hoje">
-                    <div className="flex gap-2">
-                        {cycles.map((done, index) => (
-                            <div
-                                key={index}
-                                className={cn(
-                                    'h-2 flex-1 rounded-full transition-colors duration-base ease-out',
-                                    done ? 'bg-focus-500' : 'bg-muted',
-                                )}
-                            />
-                        ))}
+    return (
+        <Page>
+            <div className="grid grid-cols-[1fr_340px] items-start gap-6">
+                <div className="flex flex-col gap-4">
+                    {timer}
+                    <div className="flex items-center justify-center gap-2">
+                        <Button variant="ghost" onClick={() => setZen(true)}>
+                            Modo zen
+                        </Button>
+                        <CompleteSessionDialog
+                            plan={plan}
+                            session={session}
+                            open={completeOpen}
+                            onOpenChange={setCompleteOpen}
+                            askForDetails={pomodoroSetting.logSessionOnFinish}
+                        />
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                        {todayCycles} de {cyclesTotal} concluídos hoje
-                    </p>
-                </Panel>
-
-                <CompleteSessionPanel plan={plan} session={session} />
-
-                <div className="rounded-md border border-pausa-200 bg-pausa-100 p-5">
-                    <div className="text-xs font-semibold tracking-wide text-pausa-600 uppercase">
-                        Próxima pausa
-                    </div>
-                    <p className="mt-1.5 text-sm text-fg-2">
-                        {pomodoroSetting.shortBreakMinutes} minutos de descanso.
+                    <p className="text-center text-xs text-muted-foreground">
+                        Espaço pausa · F entra no modo zen · E encerra
                     </p>
                 </div>
+
+                <div className="flex flex-col gap-5">
+                    <TodaySummary today={today} pomodoros={todayPomodoros} />
+
+                    <SessionNotes initialNotes={session.notes} />
+
+                    <ReviewQueue
+                        reviews={dueReviews}
+                        // Modo silencioso: durante o foco a fila para de
+                        // disputar atenção, mas continua ali.
+                        muted={
+                            pomodoroSetting.silentModeDuringFocus &&
+                            !onBreak &&
+                            !paused
+                        }
+                    />
+
+                    <div
+                        className={cn(
+                            'rounded-md border p-5 transition-colors duration-base ease-out',
+                            onBreak
+                                ? 'border-focus-200 bg-focus-100'
+                                : 'border-pausa-200 bg-pausa-100',
+                        )}
+                    >
+                        <div
+                            className={cn(
+                                'text-xs font-semibold tracking-wide uppercase',
+                                onBreak ? 'text-focus-500' : 'text-pausa-600',
+                            )}
+                        >
+                            {onBreak ? 'Próximo foco' : 'Próxima pausa'}
+                        </div>
+                        <p className="mt-1.5 text-sm text-fg-2">
+                            {onBreak
+                                ? `${pomodoroSetting.focusMinutes} minutos de estudo.`
+                                : `${pomodoroSetting.shortBreakMinutes} minutos de descanso — a cada ${pomodoroSetting.cyclesBeforeLongBreak} ciclos, ${pomodoroSetting.longBreakMinutes}.`}
+                        </p>
+                    </div>
+                </div>
             </div>
-        </div>
+        </Page>
     );
 }
 
-function CompleteSessionPanel({
+function CompleteSessionDialog({
     plan,
     session,
+    open,
+    onOpenChange,
+    askForDetails,
 }: {
     plan: StudyPlanSummary;
     session: FocusSession;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    askForDetails: boolean;
 }) {
     const form = useForm({
         subject_id: session.subjectId ? String(session.subjectId) : '',
@@ -342,8 +564,8 @@ function CompleteSessionPanel({
         (s) => String(s.id) === form.data.subject_id,
     );
 
-    function submit(event: FormEvent) {
-        event.preventDefault();
+    function submit(event?: FormEvent) {
+        event?.preventDefault();
 
         form.transform((data) => ({
             subject_id: data.subject_id || null,
@@ -356,120 +578,150 @@ function CompleteSessionPanel({
         form.post(completeSession().url, { preserveScroll: true });
     }
 
+    // Com "registrar sessão ao encerrar" desligado, encerrar é um clique
+    // só: o formulário nunca aparece e o que já estava na sessão é o que
+    // fica registrado.
+    if (!askForDetails) {
+        return (
+            <Button
+                variant="secondary"
+                disabled={form.processing}
+                onClick={() =>
+                    router.post(
+                        completeSession().url,
+                        {},
+                        { preserveScroll: true },
+                    )
+                }
+            >
+                Encerrar sessão
+            </Button>
+        );
+    }
+
     return (
-        <Panel title="Registrar ao final">
-            <form onSubmit={submit} className="flex flex-col gap-4">
-                <div className="flex flex-col gap-2">
-                    <Label htmlFor="complete_subject_id">Disciplina</Label>
-                    <Select
-                        value={form.data.subject_id}
-                        onValueChange={(value) => {
-                            form.setData('subject_id', value);
-                            form.setData('topic_id', '');
-                        }}
-                    >
-                        <SelectTrigger
-                            id="complete_subject_id"
-                            className="w-full"
-                        >
-                            <SelectValue placeholder="Selecione uma disciplina" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {plan.subjects.map((s) => (
-                                <SelectItem key={s.id} value={String(s.id)}>
-                                    {s.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <InputError message={form.errors.subject_id} />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                    <Label htmlFor="complete_topic_id">Tópico</Label>
-                    <Select
-                        value={form.data.topic_id}
-                        onValueChange={(value) =>
-                            form.setData('topic_id', value)
-                        }
-                        disabled={!subject || subject.topics.length === 0}
-                    >
-                        <SelectTrigger
-                            id="complete_topic_id"
-                            className="w-full"
-                        >
-                            <SelectValue placeholder="Selecione um tópico" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {subject?.topics.map((t) => (
-                                <SelectItem key={t.id} value={String(t.id)}>
-                                    {t.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <InputError message={form.errors.topic_id} />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                    <Label>Tipo de atividade</Label>
-                    <SegmentedControl
-                        options={ACTIVITY_OPTIONS}
-                        value={form.data.activity_type}
-                        onValueChange={(value) =>
-                            form.setData('activity_type', value as ActivityType)
-                        }
-                    />
-                    <InputError message={form.errors.activity_type} />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogTrigger asChild>
+                <Button variant="secondary">Encerrar sessão</Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Registrar a sessão</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={submit} className="flex flex-col gap-4">
                     <div className="flex flex-col gap-2">
-                        <Label htmlFor="exercises_total">
-                            Exercícios resolvidos
-                        </Label>
-                        <Input
-                            id="exercises_total"
-                            type="number"
-                            min={0}
-                            value={form.data.exercises_total}
-                            onChange={(event) =>
-                                form.setData(
-                                    'exercises_total',
-                                    event.target.value,
-                                )
-                            }
-                        />
-                        <InputError message={form.errors.exercises_total} />
+                        <Label htmlFor="complete_subject_id">Disciplina</Label>
+                        <Select
+                            value={form.data.subject_id}
+                            onValueChange={(value) => {
+                                form.setData('subject_id', value);
+                                form.setData('topic_id', '');
+                            }}
+                        >
+                            <SelectTrigger
+                                id="complete_subject_id"
+                                className="w-full"
+                            >
+                                <SelectValue placeholder="Selecione uma disciplina" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {plan.subjects.map((s) => (
+                                    <SelectItem key={s.id} value={String(s.id)}>
+                                        {s.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <InputError message={form.errors.subject_id} />
                     </div>
 
                     <div className="flex flex-col gap-2">
-                        <Label htmlFor="exercises_correct">Acertos</Label>
-                        <Input
-                            id="exercises_correct"
-                            type="number"
-                            min={0}
-                            value={form.data.exercises_correct}
-                            onChange={(event) =>
+                        <Label htmlFor="complete_topic_id">Tópico</Label>
+                        <Select
+                            value={form.data.topic_id}
+                            onValueChange={(value) =>
+                                form.setData('topic_id', value)
+                            }
+                            disabled={!subject || subject.topics.length === 0}
+                        >
+                            <SelectTrigger
+                                id="complete_topic_id"
+                                className="w-full"
+                            >
+                                <SelectValue placeholder="Selecione um tópico" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {subject?.topics.map((t) => (
+                                    <SelectItem key={t.id} value={String(t.id)}>
+                                        {t.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <InputError message={form.errors.topic_id} />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                        <Label>Tipo de atividade</Label>
+                        <SegmentedControl
+                            options={ACTIVITY_OPTIONS}
+                            value={form.data.activity_type}
+                            onValueChange={(value) =>
                                 form.setData(
-                                    'exercises_correct',
-                                    event.target.value,
+                                    'activity_type',
+                                    value as ActivityType,
                                 )
                             }
                         />
-                        <InputError message={form.errors.exercises_correct} />
+                        <InputError message={form.errors.activity_type} />
                     </div>
-                </div>
 
-                <Button
-                    type="submit"
-                    disabled={form.processing}
-                    variant="secondary"
-                >
-                    {form.processing && <Spinner />}
-                    Encerrar sessão
-                </Button>
-            </form>
-        </Panel>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-2">
+                            <Label htmlFor="exercises_total">
+                                Exercícios resolvidos
+                            </Label>
+                            <Input
+                                id="exercises_total"
+                                type="number"
+                                min={0}
+                                value={form.data.exercises_total}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'exercises_total',
+                                        event.target.value,
+                                    )
+                                }
+                            />
+                            <InputError message={form.errors.exercises_total} />
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <Label htmlFor="exercises_correct">Acertos</Label>
+                            <Input
+                                id="exercises_correct"
+                                type="number"
+                                min={0}
+                                value={form.data.exercises_correct}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'exercises_correct',
+                                        event.target.value,
+                                    )
+                                }
+                            />
+                            <InputError
+                                message={form.errors.exercises_correct}
+                            />
+                        </div>
+                    </div>
+
+                    <Button type="submit" disabled={form.processing}>
+                        {form.processing && <Spinner />}
+                        Encerrar e registrar
+                    </Button>
+                </form>
+            </DialogContent>
+        </Dialog>
     );
 }
