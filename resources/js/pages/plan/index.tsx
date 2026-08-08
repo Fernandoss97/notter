@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Page } from '@/components/page';
 import { PageHeader } from '@/components/page-header';
@@ -147,6 +148,7 @@ function ActivePlanView({
     plans: PlanSummary[];
     plan: ActiveStudyPlan;
 }) {
+    const [pendingPlanId, setPendingPlanId] = useState<number | null>(null);
     const topicsTotal = plan.subjects.reduce(
         (total, subject) => total + subject.topics.length,
         0,
@@ -174,14 +176,19 @@ function ActivePlanView({
                             value: String(p.id),
                             label: p.name,
                         }))}
-                        value={String(plan.id)}
-                        onValueChange={(value) =>
+                        value={String(pendingPlanId ?? plan.id)}
+                        onValueChange={(value) => {
+                            setPendingPlanId(Number(value));
                             router.post(
                                 activate(Number(value)).url,
                                 {},
-                                { preserveScroll: true },
-                            )
-                        }
+                                {
+                                    preserveScroll: true,
+                                    showProgress: false,
+                                    onFinish: () => setPendingPlanId(null),
+                                },
+                            );
+                        }}
                     />
                 </div>
             )}
@@ -311,34 +318,46 @@ function SubjectRow({ subject }: { subject: PlanSubject }) {
 }
 
 function TopicRow({ topic }: { topic: PlanSubject['topics'][number] }) {
+    const [pendingComplete, setPendingComplete] = useState(false);
+    const completed = topic.completed || pendingComplete;
+
     function markComplete() {
-        router.post(completeTopic(topic.id).url, {}, { preserveScroll: true });
+        setPendingComplete(true);
+        router.post(
+            completeTopic(topic.id).url,
+            {},
+            {
+                preserveScroll: true,
+                showProgress: false,
+                onError: () => setPendingComplete(false),
+            },
+        );
     }
 
     return (
         <div className="flex items-center gap-3 rounded-sm px-2 py-1.5 hover:bg-muted">
             <button
                 type="button"
-                onClick={topic.completed ? undefined : markComplete}
-                disabled={topic.completed}
+                onClick={completed ? undefined : markComplete}
+                disabled={completed}
                 aria-label={
-                    topic.completed
+                    completed
                         ? `${topic.name} concluído`
                         : `Marcar ${topic.name} como concluído`
                 }
                 className={cn(
                     'flex size-4 shrink-0 items-center justify-center rounded-[4px] border text-[11px]',
-                    topic.completed
+                    completed
                         ? 'border-transparent bg-status-success text-white'
                         : 'border-border-strong bg-transparent',
                 )}
             >
-                {topic.completed && '✓'}
+                {completed && '✓'}
             </button>
             <span
                 className={cn(
                     'flex-1 text-sm',
-                    topic.completed ? 'text-fg-2' : 'text-foreground',
+                    completed ? 'text-fg-2' : 'text-foreground',
                 )}
             >
                 {topic.name}

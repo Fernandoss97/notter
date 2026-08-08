@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';
 import { Page } from '@/components/page';
@@ -208,7 +209,8 @@ function ActiveSessionView({
     todayCycles: number;
 }) {
     const elapsedSeconds = useLiveElapsedSeconds(session);
-    const paused = session.state === 'paused';
+    const [pendingPaused, setPendingPaused] = useState<boolean | null>(null);
+    const paused = pendingPaused ?? session.state === 'paused';
     const progress = Math.min(
         100,
         Math.round((elapsedSeconds / session.plannedSeconds) * 100),
@@ -223,7 +225,16 @@ function ActiveSessionView({
 
     function toggle() {
         const target = paused ? resumeSession() : pauseSession();
-        router.post(target.url, {}, { preserveScroll: true });
+        setPendingPaused(!paused);
+        router.post(
+            target.url,
+            {},
+            {
+                preserveScroll: true,
+                showProgress: false,
+                onFinish: () => setPendingPaused(null),
+            },
+        );
     }
 
     const cyclesTotal = pomodoroSetting.cyclesBeforeLongBreak;
