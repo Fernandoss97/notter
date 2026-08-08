@@ -31,7 +31,7 @@ export function SessionBar() {
         <div
             data-slot="session-bar"
             className={cn(
-                'sticky top-0 z-10 flex h-11 items-center gap-4 border-b px-10',
+                'sticky top-0 z-10 flex h-16 items-center gap-5 border-b px-10',
                 paused
                     ? 'border-pausa-200 bg-pausa-100'
                     : 'border-focus-200 bg-focus-100',
@@ -39,20 +39,25 @@ export function SessionBar() {
         >
             <span
                 className={cn(
-                    'flex items-center gap-2 text-xs font-bold tracking-wide uppercase',
+                    'flex items-center gap-2 text-sm font-bold tracking-wide uppercase',
                     paused ? 'text-pausa-600' : 'text-focus-500',
                 )}
             >
-                <Dot className={paused ? 'bg-pausa-500' : 'bg-focus-500'} />
+                <Dot
+                    className={cn(
+                        'size-2.5',
+                        paused ? 'bg-pausa-500' : 'bg-focus-500',
+                    )}
+                />
                 {paused ? 'Pausado' : 'Em foco'}
             </span>
-            <span className="font-mono text-num-sm font-semibold text-foreground tabular-nums">
+            <span className="font-mono text-2xl font-semibold text-foreground tabular-nums">
                 {formatElapsed(elapsedSeconds)}
             </span>
-            <span className="text-sm text-fg-2">
+            <span className="text-base text-fg-2">
                 {activeSession.subject} · {activeSession.topic}
             </span>
-            <div className="h-1 max-w-[260px] flex-1 overflow-hidden rounded-full bg-foreground/10">
+            <div className="h-1.5 max-w-[320px] flex-1 overflow-hidden rounded-full bg-foreground/10">
                 <div
                     className={cn(
                         'h-full',
@@ -65,7 +70,7 @@ export function SessionBar() {
             <Link
                 href={showFocus()}
                 className={cn(
-                    'rounded-sm border px-3 py-1.5 text-xs font-semibold whitespace-nowrap',
+                    'rounded-sm border px-4 py-2 text-sm font-semibold whitespace-nowrap',
                     paused
                         ? 'border-pausa-500 text-pausa-600'
                         : 'border-focus-500 text-focus-500',
