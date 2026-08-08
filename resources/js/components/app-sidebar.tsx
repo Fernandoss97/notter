@@ -20,9 +20,16 @@ import { index as showPlan } from '@/routes/plans';
 import { edit as showPomodoroSettings } from '@/routes/pomodoro-settings';
 import type { NavItem } from '@/types';
 
+// Foco primeiro: é a tela onde o usuário passa a maior parte do tempo e
+// para onde o login leva. O dashboard vira o lugar de olhar para trás.
 const mainNavItems: NavItem[] = [
     {
-        title: 'Dashboard',
+        title: 'Foco',
+        href: showFocus(),
+        icon: Timer,
+    },
+    {
+        title: 'Progresso',
         href: dashboard(),
         icon: LayoutGrid,
     },
@@ -30,11 +37,6 @@ const mainNavItems: NavItem[] = [
         title: 'Plano de estudos',
         href: showPlan(),
         icon: BookOpen,
-    },
-    {
-        title: 'Foco',
-        href: showFocus(),
-        icon: Timer,
     },
     {
         title: 'Histórico',

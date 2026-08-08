@@ -9,7 +9,7 @@ test('a user can change the focus duration and save', function () {
         ->fill('email', $user->email)
         ->fill('password', 'password')
         ->click('Log in')
-        ->assertPathIs('/dashboard')
+        ->assertPathIs('/foco')
         ->assertNoJavaScriptErrors();
 
     $page->hover('[data-slot="sidebar"]')

@@ -24,7 +24,7 @@ test('the history screen loads and filters sessions', function () {
         ->fill('email', $user->email)
         ->fill('password', 'password')
         ->click('Log in')
-        ->assertPathIs('/dashboard')
+        ->assertPathIs('/foco')
         ->assertNoJavaScriptErrors();
 
     $page->hover('[data-slot="sidebar"]')

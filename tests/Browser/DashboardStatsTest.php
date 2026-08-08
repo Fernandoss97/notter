@@ -24,6 +24,11 @@ test('the dashboard shows plan stats and subject progress', function () {
         ->fill('email', $user->email)
         ->fill('password', 'password')
         ->click('Log in')
+        ->assertPathIs('/foco')
+        ->assertNoJavaScriptErrors();
+
+    $page->hover('[data-slot="sidebar"]')
+        ->click('Progresso')
         ->assertPathIs('/dashboard')
         ->assertNoJavaScriptErrors();
 

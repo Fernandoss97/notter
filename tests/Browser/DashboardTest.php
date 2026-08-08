@@ -9,7 +9,7 @@ test('guests are redirected away from the dashboard', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('a user can log in and reach the dashboard', function () {
+test('a user lands on the focus screen after logging in', function () {
     $user = User::factory()->create();
 
     $page = visit('/login');
@@ -19,7 +19,7 @@ test('a user can log in and reach the dashboard', function () {
         ->fill('email', $user->email)
         ->fill('password', 'password')
         ->click('Log in')
-        ->assertPathIs('/dashboard')
+        ->assertPathIs('/foco')
         ->assertNoJavaScriptErrors();
 
     $this->assertAuthenticated();

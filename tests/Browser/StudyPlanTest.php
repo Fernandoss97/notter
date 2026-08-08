@@ -9,7 +9,7 @@ test('a user can create a plan, add a subject and topic, and complete it', funct
         ->fill('email', $user->email)
         ->fill('password', 'password')
         ->click('Log in')
-        ->assertPathIs('/dashboard')
+        ->assertPathIs('/foco')
         ->assertNoJavaScriptErrors();
 
     $page->hover('[data-slot="sidebar"]')
