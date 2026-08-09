@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { BookOpen, History, LayoutGrid, Timer } from 'lucide-react';
+import { BookOpen, History, LayoutGrid, ListChecks, Timer } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -16,6 +16,7 @@ import { dashboard } from '@/routes';
 import { show as showFocus } from '@/routes/focus';
 import { index as showHistory } from '@/routes/history';
 import { index as showPlan } from '@/routes/plans';
+import { index as showTrack } from '@/routes/track';
 import type { NavItem } from '@/types';
 
 // Foco primeiro: é a tela onde o usuário passa a maior parte do tempo e
@@ -30,6 +31,11 @@ const mainNavItems: NavItem[] = [
         title: 'Progresso',
         href: dashboard(),
         icon: LayoutGrid,
+    },
+    {
+        title: 'Trilha',
+        href: showTrack(),
+        icon: ListChecks,
     },
     {
         title: 'Plano de estudos',

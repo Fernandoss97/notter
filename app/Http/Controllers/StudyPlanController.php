@@ -79,27 +79,27 @@ class StudyPlanController extends Controller
     }
 
     /**
-     * @return array{id: int, name: string, priority: string, goalMinutes: int|null, topics: array<int, array{id: int, name: string, completed: bool, reviewStatus: string|null}>}
+     * @return array{id: int, name: string, goalMinutes: int|null, topics: array<int, array{id: int, name: string, cycle: int, completed: bool, reviewStatus: string|null}>}
      */
     private function subjectProp(Subject $subject): array
     {
         return [
             'id' => $subject->id,
             'name' => $subject->name,
-            'priority' => $subject->priority->value,
             'goalMinutes' => $subject->goal_minutes,
             'topics' => $subject->topics->map($this->topicProp(...))->all(),
         ];
     }
 
     /**
-     * @return array{id: int, name: string, completed: bool, reviewStatus: string|null}
+     * @return array{id: int, name: string, cycle: int, completed: bool, reviewStatus: string|null}
      */
     private function topicProp(Topic $topic): array
     {
         return [
             'id' => $topic->id,
             'name' => $topic->name,
+            'cycle' => $topic->cycle,
             'completed' => $topic->isCompleted(),
             'reviewStatus' => $topic->reviewStatus(),
         ];

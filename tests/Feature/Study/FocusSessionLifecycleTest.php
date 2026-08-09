@@ -115,6 +115,44 @@ test('completing a session records the registration data and freezes elapsed tim
         ->and($completed->exercises_correct)->toBe(16);
 });
 
+test('the questions of a session add up on the task', function () {
+    $session = StudySession::factory()->create([
+        'state' => FocusSessionState::Running,
+        'resumed_at' => now(),
+    ]);
+    $subject = Subject::factory()->create();
+    $topic = Topic::factory()->for($subject)->create([
+        'exercises_total' => 10,
+        'exercises_correct' => 7,
+    ]);
+
+    (new CompleteFocusSession)->handle(
+        $session,
+        $subject,
+        $topic,
+        ActivityType::Exercises,
+        exercisesTotal: 20,
+        exercisesCorrect: 16,
+    );
+
+    // A tarefa acumula ao longo das sessões: 10+20 questões, 7+16 acertos.
+    expect($topic->refresh()->exercises_total)->toBe(30)
+        ->and($topic->exercises_correct)->toBe(23);
+});
+
+test('a session without questions leaves the task total alone', function () {
+    $session = StudySession::factory()->create([
+        'state' => FocusSessionState::Running,
+        'resumed_at' => now(),
+    ]);
+    $subject = Subject::factory()->create();
+    $topic = Topic::factory()->for($subject)->create(['exercises_total' => 10]);
+
+    (new CompleteFocusSession)->handle($session, $subject, $topic, ActivityType::Reading);
+
+    expect($topic->refresh()->exercises_total)->toBe(10);
+});
+
 test('completing an already-completed session throws', function () {
     $session = StudySession::factory()->completed()->create();
     $subject = Subject::factory()->create();

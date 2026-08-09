@@ -13,6 +13,10 @@ export type FocusPhase = 'focus' | 'short_break' | 'long_break';
 export type TopicSummary = {
     id: number;
     name: string;
+    /** Onda da trilha a que a tarefa pertence. */
+    cycle: number;
+    /** Sequência dentro do plano — atravessa disciplinas. */
+    position: number;
     completed: boolean;
     reviewStatus: ReviewStatus;
 };
@@ -20,7 +24,6 @@ export type TopicSummary = {
 export type SubjectSummary = {
     id: number;
     name: string;
-    priority: SubjectPriority;
     topics: TopicSummary[];
 };
 
@@ -73,13 +76,12 @@ export type PomodoroSettingSummary = {
     silentModeDuringFocus: boolean;
 };
 
-export type SubjectPriority = 'low' | 'medium' | 'high';
-
 export type StudyPlanType = 'contest' | 'free';
 
 export type PlanTopic = {
     id: number;
     name: string;
+    cycle: number;
     completed: boolean;
     reviewStatus: ReviewStatus;
 };
@@ -87,7 +89,6 @@ export type PlanTopic = {
 export type PlanSubject = {
     id: number;
     name: string;
-    priority: SubjectPriority;
     goalMinutes: number | null;
     topics: PlanTopic[];
 };
@@ -153,6 +154,38 @@ export type HistoryTypeFilter = ActivityType | 'all';
 export type HistoryFilters = {
     period: HistoryPeriod;
     type: HistoryTypeFilter;
+};
+
+export type TrackTask = {
+    id: number;
+    /** Nº da tarefa na fila do plano inteiro, derivado da ordem. */
+    number: number;
+    name: string;
+    subjectName: string;
+    completed: boolean;
+    /** Data em que foi concluída, no formato dd/mm/aaaa. */
+    completedOn: string | null;
+    reviewStatus: ReviewStatus;
+    exercisesTotal: number;
+    exercisesCorrect: number;
+    /** Percentual de acerto, ou null quando não há questão registrada. */
+    accuracy: number | null;
+};
+
+export type TrackCycle = {
+    cycle: number;
+    done: number;
+    total: number;
+    exercises: number;
+    correct: number;
+    accuracy: number | null;
+    tasks: TrackTask[];
+};
+
+export type TrackPlan = {
+    id: number;
+    name: string;
+    subjects: { id: number; name: string }[];
 };
 
 export type PomodoroSettingFull = {

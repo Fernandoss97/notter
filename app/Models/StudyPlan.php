@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Carbon;
 
 /**
@@ -58,6 +59,20 @@ class StudyPlan extends Model
     public function subjects(): HasMany
     {
         return $this->hasMany(Subject::class)->orderBy('position');
+    }
+
+    /**
+     * A fila da trilha: todas as tarefas do plano numa ordem só, ciclo a
+     * ciclo, atravessando disciplinas. As colunas vão qualificadas porque
+     * `position` existe dos dois lados do join.
+     *
+     * @return HasManyThrough<Topic, Subject, $this>
+     */
+    public function topics(): HasManyThrough
+    {
+        return $this->hasManyThrough(Topic::class, Subject::class)
+            ->orderBy('topics.cycle')
+            ->orderBy('topics.position');
     }
 
     /**

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\Enums\SubjectPriority;
 use Database\Factories\SubjectFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,20 +14,18 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $study_plan_id
  * @property string $name
- * @property SubjectPriority $priority
  * @property int|null $goal_minutes
  * @property int $position
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'priority', 'goal_minutes', 'position'])]
+#[Fillable(['name', 'goal_minutes', 'position'])]
 class Subject extends Model
 {
     /** @use HasFactory<SubjectFactory> */
     use HasFactory;
 
     protected $attributes = [
-        'priority' => 'medium',
         'position' => 0,
     ];
 
@@ -38,7 +35,6 @@ class Subject extends Model
     protected function casts(): array
     {
         return [
-            'priority' => SubjectPriority::class,
             'goal_minutes' => 'integer',
             'position' => 'integer',
         ];
@@ -53,11 +49,15 @@ class Subject extends Model
     }
 
     /**
+     * A ordem é a da trilha, não a de criação: `position` é a sequência
+     * dentro do plano inteiro, então uma tarefa de um ciclo anterior vem
+     * antes mesmo tendo sido cadastrada depois.
+     *
      * @return HasMany<Topic, $this>
      */
     public function topics(): HasMany
     {
-        return $this->hasMany(Topic::class)->orderBy('position');
+        return $this->hasMany(Topic::class)->orderBy('cycle')->orderBy('position');
     }
 
     /**

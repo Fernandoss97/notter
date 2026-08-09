@@ -5,6 +5,7 @@ use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\PomodoroSettingController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\StudyPlanController;
+use App\Http\Controllers\StudyTrackController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TopicController;
 use Illuminate\Support\Facades\Route;
@@ -26,6 +27,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('plano/subjects', [SubjectController::class, 'store'])->name('subjects.store');
     Route::post('plano/topics', [TopicController::class, 'store'])->name('topics.store');
     Route::post('plano/topics/{topic}/complete', [TopicController::class, 'complete'])->name('topics.complete');
+    Route::put('plano/topics/{topic}/questoes', [TopicController::class, 'exercises'])->name('topics.exercises');
+
+    Route::get('trilha', [StudyTrackController::class, 'index'])->name('track.index');
 
     Route::post('revisoes/{review}/complete', [ReviewController::class, 'complete'])->name('reviews.complete');
 

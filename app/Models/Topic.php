@@ -13,20 +13,26 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $subject_id
+ * @property int $cycle
  * @property string $name
  * @property int $position
  * @property Carbon|null $completed_at
+ * @property int $exercises_total
+ * @property int $exercises_correct
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'position', 'completed_at'])]
+#[Fillable(['name', 'cycle', 'position', 'completed_at', 'exercises_total', 'exercises_correct'])]
 class Topic extends Model
 {
     /** @use HasFactory<TopicFactory> */
     use HasFactory;
 
     protected $attributes = [
+        'cycle' => 0,
         'position' => 0,
+        'exercises_total' => 0,
+        'exercises_correct' => 0,
     ];
 
     /**
@@ -35,8 +41,11 @@ class Topic extends Model
     protected function casts(): array
     {
         return [
+            'cycle' => 'integer',
             'position' => 'integer',
             'completed_at' => 'datetime',
+            'exercises_total' => 'integer',
+            'exercises_correct' => 'integer',
         ];
     }
 
@@ -67,6 +76,36 @@ class Topic extends Model
     public function isCompleted(): bool
     {
         return $this->completed_at !== null;
+    }
+
+    /**
+     * Percentual de acerto na tarefa. `null` quando não há questão
+     * registrada — zero seria uma nota, não uma ausência.
+     */
+    public function accuracyPercent(): ?int
+    {
+        if ($this->exercises_total === 0) {
+            return null;
+        }
+
+        return (int) round($this->exercises_correct / $this->exercises_total * 100);
+    }
+
+    /**
+     * Soma o que foi resolvido numa sessão ao total da tarefa. A tarefa
+     * acumula ao longo de várias sessões — e de registros feitos na mão.
+     *
+     * A soma acontece no banco, não em PHP: a instância que chega aqui foi
+     * carregada quando a sessão começou e pode não saber de um registro
+     * manual feito no meio do caminho.
+     */
+    public function addExercises(int $total, int $correct): void
+    {
+        $this->increment('exercises_total', $total);
+
+        if ($correct > 0) {
+            $this->increment('exercises_correct', $correct);
+        }
     }
 
     /**

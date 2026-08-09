@@ -142,13 +142,11 @@ test('a subject can be added to the active plan', function () {
 
     $this->actingAs($user)->post('/plano/subjects', [
         'name' => 'Estatística',
-        'priority' => 'high',
         'goal_minutes' => 900,
     ])->assertRedirect(route('plans.index'));
 
     $subject = Subject::sole();
     expect($subject->name)->toBe('Estatística')
-        ->and($subject->priority->value)->toBe('high')
         ->and($subject->goal_minutes)->toBe(900);
 });
 
@@ -157,7 +155,6 @@ test('adding a subject without an active plan flashes an error', function () {
 
     $this->actingAs($user)->post('/plano/subjects', [
         'name' => 'Estatística',
-        'priority' => 'high',
     ]);
 
     expect(Subject::count())->toBe(0);
@@ -168,10 +165,13 @@ test('a topic can be added to a subject of the active plan', function () {
     $plan = StudyPlan::factory()->for($user)->active()->create();
     $subject = Subject::factory()->for($plan)->create();
 
-    $this->actingAs($user)->post('/plano/topics', [
-        'subject_id' => $subject->id,
-        'name' => 'Autovalores e autovetores',
-    ])->assertRedirect(route('plans.index'));
+    $this->actingAs($user)
+        ->from(route('plans.index'))
+        ->post('/plano/topics', [
+            'subject_id' => $subject->id,
+            'name' => 'Autovalores e autovetores',
+        ])
+        ->assertRedirect(route('plans.index'));
 
     $topic = Topic::sole();
     expect($topic->name)->toBe('Autovalores e autovetores')
@@ -199,6 +199,7 @@ test('completing a topic schedules its first review', function () {
     $topic = Topic::factory()->for($subject)->create();
 
     $this->actingAs($user)
+        ->from(route('plans.index'))
         ->post("/plano/topics/{$topic->id}/complete")
         ->assertRedirect(route('plans.index'));
 

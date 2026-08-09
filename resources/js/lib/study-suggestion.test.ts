@@ -1,13 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import type { SubjectSummary } from '@/types/study';
+import type { SubjectSummary, TopicSummary } from '@/types/study';
 import { suggestNextStudy } from './study-suggestion';
 
 function subject(overrides: Partial<SubjectSummary> = {}): SubjectSummary {
     return {
         id: 1,
         name: 'Álgebra Linear',
-        priority: 'medium',
         topics: [],
+        ...overrides,
+    };
+}
+
+function topic(overrides: Partial<TopicSummary> = {}): TopicSummary {
+    return {
+        id: 1,
+        name: 'Matrizes',
+        cycle: 0,
+        position: 0,
+        completed: false,
+        reviewStatus: null,
         ...overrides,
     };
 }
@@ -16,75 +27,64 @@ describe('suggestNextStudy', () => {
     it('suggests nothing when every topic is done', () => {
         expect(
             suggestNextStudy([
-                subject({
-                    topics: [
-                        {
-                            id: 1,
-                            name: 'Matrizes',
-                            completed: true,
-                            reviewStatus: null,
-                        },
-                    ],
-                }),
+                subject({ topics: [topic({ completed: true })] }),
             ]),
         ).toBeNull();
     });
 
-    it('puts an overdue review ahead of a higher priority subject', () => {
+    it('leaves review urgency to the review queue', () => {
         const suggestion = suggestNextStudy([
             subject({
                 id: 1,
-                priority: 'low',
                 topics: [
-                    {
+                    topic({
                         id: 10,
-                        name: 'Matrizes',
+                        position: 5,
                         completed: true,
                         reviewStatus: 'overdue',
-                    },
+                    }),
                 ],
             }),
             subject({
                 id: 2,
-                priority: 'high',
-                topics: [
-                    {
-                        id: 20,
-                        name: 'Vetores',
-                        completed: false,
-                        reviewStatus: null,
-                    },
-                ],
+                topics: [topic({ id: 20, name: 'Vetores', position: 0 })],
             }),
         ]);
 
-        expect(suggestion).toEqual({ subjectId: 1, topicId: 10 });
+        // A revisão atrasada não desvia a fila aqui: quem preseleciona uma
+        // revisão é a tela de foco, a partir de `dueReviews`.
+        expect(suggestion).toEqual({ subjectId: 2, topicId: 20 });
     });
 
-    it('falls back to the highest priority subject with an open topic', () => {
+    it('follows the plan queue across subjects', () => {
+        const suggestion = suggestNextStudy([
+            subject({ id: 1, topics: [topic({ id: 10, position: 3 })] }),
+            subject({
+                id: 2,
+                topics: [topic({ id: 20, name: 'Vetores', position: 1 })],
+            }),
+        ]);
+
+        expect(suggestion).toEqual({ subjectId: 2, topicId: 20 });
+    });
+
+    it('finishes an earlier cycle before a later one, whatever the position', () => {
         const suggestion = suggestNextStudy([
             subject({
                 id: 1,
-                priority: 'low',
-                topics: [
-                    {
-                        id: 10,
-                        name: 'Matrizes',
-                        completed: false,
-                        reviewStatus: null,
-                    },
-                ],
+                topics: [topic({ id: 10, cycle: 1, position: 2 })],
             }),
             subject({
                 id: 2,
-                priority: 'high',
+                // Acrescentada depois ao ciclo anterior: posição alta na fila,
+                // mas ainda assim é o que vem antes.
                 topics: [
-                    {
+                    topic({
                         id: 20,
                         name: 'Vetores',
-                        completed: false,
-                        reviewStatus: null,
-                    },
+                        cycle: 0,
+                        position: 99,
+                    }),
                 ],
             }),
         ]);
@@ -92,33 +92,18 @@ describe('suggestNextStudy', () => {
         expect(suggestion).toEqual({ subjectId: 2, topicId: 20 });
     });
 
-    it('keeps the plan order when priorities tie', () => {
+    it('skips completed tasks when picking the next one', () => {
         const suggestion = suggestNextStudy([
             subject({
                 id: 1,
                 topics: [
-                    {
-                        id: 10,
-                        name: 'Matrizes',
-                        completed: false,
-                        reviewStatus: null,
-                    },
-                ],
-            }),
-            subject({
-                id: 2,
-                topics: [
-                    {
-                        id: 20,
-                        name: 'Vetores',
-                        completed: false,
-                        reviewStatus: null,
-                    },
+                    topic({ id: 10, position: 0, completed: true }),
+                    topic({ id: 11, name: 'Determinantes', position: 1 }),
                 ],
             }),
         ]);
 
-        expect(suggestion).toEqual({ subjectId: 1, topicId: 10 });
+        expect(suggestion).toEqual({ subjectId: 1, topicId: 11 });
     });
 
     it('suggests a subject with no topics at all when it is all there is', () => {

@@ -1,10 +1,4 @@
-import type { SubjectSummary, SubjectPriority } from '@/types/study';
-
-const PRIORITY_WEIGHT: Record<SubjectPriority, number> = {
-    high: 3,
-    medium: 2,
-    low: 1,
-};
+import type { SubjectSummary, TopicSummary } from '@/types/study';
 
 export type StudySuggestion = {
     subjectId: number;
@@ -13,12 +7,13 @@ export type StudySuggestion = {
 
 /**
  * O que estudar agora, quando o usuário chega na tela sem ter escolhido
- * nada. Abrir dois seletores vazios transfere para ele uma decisão que os
- * dados já respondem:
+ * nada: a próxima tarefa aberta da trilha — a fila que ele mesmo montou,
+ * ciclo a ciclo, atravessando disciplinas.
  *
- * 1. revisão atrasada é sempre o mais urgente;
- * 2. depois, a disciplina de maior prioridade com tópico em aberto;
- * 3. em caso de empate, a primeira do plano (a ordem que ele definiu).
+ * Revisão devida não entra aqui. Quem responde por urgência de revisão é a
+ * fila ao lado (`dueReviews`), ordenada por vencimento; duplicar esse
+ * critério com outra régua faria a preseleção discordar da primeira linha
+ * da fila na mesma tela.
  *
  * Devolve `null` quando não há nada em aberto — aí o seletor vazio é
  * honesto.
@@ -26,33 +21,27 @@ export type StudySuggestion = {
 export function suggestNextStudy(
     subjects: SubjectSummary[],
 ): StudySuggestion | null {
-    const candidates = subjects
-        .map((subject) => ({
-            subject,
-            topic: subject.topics.find((t) => !t.completed) ?? null,
-            overdue: subject.topics.find((t) => t.reviewStatus === 'overdue'),
-        }))
-        .filter(({ topic, overdue }) => topic !== null || overdue);
+    const next = subjects
+        .flatMap((subject) =>
+            subject.topics
+                .filter((topic) => !topic.completed)
+                .map((topic) => ({ subject, topic })),
+        )
+        .sort((a, b) => compareQueue(a.topic, b.topic))[0];
 
-    if (candidates.length === 0) {
+    if (!next) {
         return null;
     }
 
-    const withOverdue = candidates.find(({ overdue }) => overdue);
+    return { subjectId: next.subject.id, topicId: next.topic.id };
+}
 
-    if (withOverdue?.overdue) {
-        return {
-            subjectId: withOverdue.subject.id,
-            topicId: withOverdue.overdue.id,
-        };
-    }
-
-    const best = candidates.reduce((current, candidate) =>
-        PRIORITY_WEIGHT[candidate.subject.priority] >
-        PRIORITY_WEIGHT[current.subject.priority]
-            ? candidate
-            : current,
-    );
-
-    return { subjectId: best.subject.id, topicId: best.topic?.id ?? null };
+/**
+ * A ordem da trilha: ciclo antes de posição. `position` já é a sequência
+ * dentro do plano, então ela sozinha resolveria — o ciclo vem primeiro
+ * porque uma tarefa acrescentada depois a um ciclo anterior recebe uma
+ * posição alta e ainda assim precisa ser estudada antes.
+ */
+function compareQueue(a: TopicSummary, b: TopicSummary): number {
+    return a.cycle - b.cycle || a.position - b.position;
 }

@@ -1,7 +1,11 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ActiveStudyPlan, PlanSummary } from '@/types/study';
+import type {
+    ActiveStudyPlan,
+    PlanSubject,
+    PlanSummary,
+} from '@/types/study';
 import PlanIndex from './index';
 
 const { post, formPost } = vi.hoisted(() => ({
@@ -200,4 +204,53 @@ describe('PlanIndex', () => {
             'on',
         );
     });
+
+    it('names the cycle of each topic only when the track has more than one', () => {
+        const { rerender } = render(
+            <PlanIndex
+                plans={[]}
+                activePlan={{ ...activePlan, subjects: [subjectWithCycles(0)] }}
+            />,
+        );
+
+        expect(screen.queryByText('Ciclo 1')).not.toBeInTheDocument();
+
+        rerender(
+            <PlanIndex
+                plans={[]}
+                activePlan={{ ...activePlan, subjects: [subjectWithCycles(1)] }}
+            />,
+        );
+
+        expect(screen.getByText('Ciclo 1')).toBeInTheDocument();
+        expect(screen.getByText('Ciclo 2')).toBeInTheDocument();
+    });
 });
+
+/**
+ * Uma disciplina com dois tópicos: o segundo no ciclo pedido, o primeiro
+ * sempre no ciclo 0.
+ */
+function subjectWithCycles(secondCycle: number): PlanSubject {
+    return {
+        id: 10,
+        name: 'Álgebra Linear',
+        goalMinutes: null,
+        topics: [
+            {
+                id: 100,
+                name: 'Matrizes',
+                cycle: 0,
+                completed: false,
+                reviewStatus: null,
+            },
+            {
+                id: 101,
+                name: 'Vetores',
+                cycle: secondCycle,
+                completed: false,
+                reviewStatus: null,
+            },
+        ],
+    };
+}

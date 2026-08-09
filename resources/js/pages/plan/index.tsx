@@ -22,7 +22,6 @@ import { ProgressBar } from '@/components/ui/progress-bar';
 import { ReviewStatusBadge } from '@/components/ui/review-status-badge';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Spinner } from '@/components/ui/spinner';
-import { SUBJECT_PRIORITY_LABEL } from '@/lib/study-labels';
 import { cn } from '@/lib/utils';
 import { show as showFocus } from '@/routes/focus';
 import {
@@ -41,18 +40,11 @@ import type {
     PlanSubject,
     PlanSummary,
     StudyPlanType,
-    SubjectPriority,
 } from '@/types/study';
 
 const TYPE_OPTIONS: { value: StudyPlanType; label: string }[] = [
     { value: 'contest', label: 'Concurso' },
     { value: 'free', label: 'Livre' },
-];
-
-const PRIORITY_OPTIONS: { value: SubjectPriority; label: string }[] = [
-    { value: 'low', label: 'Baixa' },
-    { value: 'medium', label: 'Média' },
-    { value: 'high', label: 'Alta' },
 ];
 
 type PlanFormData = {
@@ -377,7 +369,11 @@ function ActivePlanView({
                     className="stagger-children flex flex-col gap-3"
                 >
                     {plan.subjects.map((subject) => (
-                        <SubjectRow key={subject.id} subject={subject} />
+                        <SubjectRow
+                            key={subject.id}
+                            subject={subject}
+                            showCycles={hasSeveralCycles(plan)}
+                        />
                     ))}
                     {pendingSubject && (
                         // `animate-none` cancela o stagger: o eco do que
@@ -464,7 +460,6 @@ function AddSubjectPanel({
 }) {
     const form = useForm({
         name: '',
-        priority: 'medium' as SubjectPriority,
         goal_minutes: '',
     });
 
@@ -473,7 +468,6 @@ function AddSubjectPanel({
 
         form.transform((data) => ({
             name: data.name,
-            priority: data.priority,
             goal_minutes: data.goal_minutes
                 ? Number(data.goal_minutes) * 60
                 : null,
@@ -504,17 +498,6 @@ function AddSubjectPanel({
                     />
                 </div>
 
-                <div className="flex flex-col gap-2">
-                    <Label>Prioridade</Label>
-                    <SegmentedControl
-                        options={PRIORITY_OPTIONS}
-                        value={form.data.priority}
-                        onValueChange={(value) =>
-                            form.setData('priority', value as SubjectPriority)
-                        }
-                    />
-                </div>
-
                 <div className="flex w-32 flex-col gap-2">
                     <Label htmlFor="subject_goal">Meta (horas)</Label>
                     <Input
@@ -541,7 +524,27 @@ function AddSubjectPanel({
     );
 }
 
-function SubjectRow({ subject }: { subject: PlanSubject }) {
+/**
+ * O ciclo só vira informação quando existe mais de um: numa trilha de um
+ * ciclo só, um "Ciclo 1" repetido em cada linha é ruído.
+ */
+function hasSeveralCycles(plan: ActiveStudyPlan): boolean {
+    const cycles = new Set(
+        plan.subjects.flatMap((subject) =>
+            subject.topics.map((topic) => topic.cycle),
+        ),
+    );
+
+    return cycles.size > 1;
+}
+
+function SubjectRow({
+    subject,
+    showCycles,
+}: {
+    subject: PlanSubject;
+    showCycles: boolean;
+}) {
     const [pendingTopic, setPendingTopic] = useState<string | null>(null);
     const topicsDone = subject.topics.filter((t) => t.completed).length;
     const progress =
@@ -557,8 +560,7 @@ function SubjectRow({ subject }: { subject: PlanSubject }) {
                         {subject.name}
                     </div>
                     <div className="mt-0.5 text-xs text-muted-foreground">
-                        {subject.topics.length} tópicos ·{' '}
-                        {SUBJECT_PRIORITY_LABEL[subject.priority]}
+                        {subject.topics.length} tópicos
                         {subject.goalMinutes &&
                             ` · meta ${Math.round(subject.goalMinutes / 60)}h/semana`}
                     </div>
@@ -570,7 +572,11 @@ function SubjectRow({ subject }: { subject: PlanSubject }) {
 
             <div className="flex flex-col gap-1.5">
                 {subject.topics.map((topic) => (
-                    <TopicRow key={topic.id} topic={topic} />
+                    <TopicRow
+                        key={topic.id}
+                        topic={topic}
+                        showCycle={showCycles}
+                    />
                 ))}
                 {pendingTopic && (
                     // Eco do tópico recém-digitado, no lugar em que ele vai
@@ -593,7 +599,13 @@ function SubjectRow({ subject }: { subject: PlanSubject }) {
     );
 }
 
-function TopicRow({ topic }: { topic: PlanSubject['topics'][number] }) {
+function TopicRow({
+    topic,
+    showCycle,
+}: {
+    topic: PlanSubject['topics'][number];
+    showCycle: boolean;
+}) {
     const [pendingComplete, setPendingComplete] = useState(false);
     const completed = topic.completed || pendingComplete;
 
@@ -641,6 +653,11 @@ function TopicRow({ topic }: { topic: PlanSubject['topics'][number] }) {
             >
                 {topic.name}
             </span>
+            {showCycle && (
+                <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                    Ciclo {topic.cycle + 1}
+                </span>
+            )}
             {topic.reviewStatus && (
                 <ReviewStatusBadge status={topic.reviewStatus} />
             )}
