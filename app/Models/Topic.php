@@ -13,19 +13,21 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $subject_id
+ * @property int $cycle
  * @property string $name
  * @property int $position
  * @property Carbon|null $completed_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'position', 'completed_at'])]
+#[Fillable(['name', 'cycle', 'position', 'completed_at'])]
 class Topic extends Model
 {
     /** @use HasFactory<TopicFactory> */
     use HasFactory;
 
     protected $attributes = [
+        'cycle' => 0,
         'position' => 0,
     ];
 
@@ -35,6 +37,7 @@ class Topic extends Model
     protected function casts(): array
     {
         return [
+            'cycle' => 'integer',
             'position' => 'integer',
             'completed_at' => 'datetime',
         ];

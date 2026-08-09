@@ -62,11 +62,12 @@ const plan: StudyPlanSummary = {
         {
             id: 10,
             name: 'Álgebra Linear',
-            priority: 'high',
             topics: [
                 {
                     id: 100,
                     name: 'Autovalores',
+                    cycle: 0,
+                    position: 0,
                     completed: false,
                     reviewStatus: null,
                 },
@@ -184,6 +185,58 @@ describe('FocusShow', () => {
         expect(screen.getByText('Autovalores')).toBeInTheDocument();
         // Modo silencioso: a fila não anuncia o atraso durante o foco.
         expect(screen.queryByText('1 atrasada')).not.toBeInTheDocument();
+    });
+
+    it('preselects the first due review, ahead of the next task in the track', () => {
+        const twoSubjects: StudyPlanSummary = {
+            id: 1,
+            name: 'Concurso XYZ',
+            subjects: [
+                ...plan.subjects,
+                {
+                    id: 11,
+                    name: 'Estatística',
+                    topics: [
+                        {
+                            id: 110,
+                            name: 'Distribuições',
+                            cycle: 0,
+                            position: 1,
+                            completed: true,
+                            reviewStatus: 'overdue',
+                        },
+                    ],
+                },
+            ],
+        };
+
+        render(
+            <FocusShow
+                plan={twoSubjects}
+                session={null}
+                pomodoroSetting={pomodoroSetting}
+                todayPomodoros={0}
+                today={{ minutes: 0, goalMinutes: 100 }}
+                dueReviews={[
+                    {
+                        id: 1,
+                        subjectId: 11,
+                        subjectName: 'Estatística',
+                        topicId: 110,
+                        topicName: 'Distribuições',
+                        sequence: 1,
+                        dueOn: '05/08',
+                        overdue: true,
+                    },
+                ]}
+            />,
+        );
+
+        // A trilha apontaria para Álgebra Linear (posição 0, em aberto); a
+        // fila de revisões é quem manda quando há revisão devida.
+        expect(screen.getByLabelText('Disciplina (opcional)')).toHaveTextContent(
+            'Estatística',
+        );
     });
 
     it('lets the review queue speak up during a break', () => {

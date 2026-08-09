@@ -20,6 +20,7 @@ class TopicFactory extends Factory
     {
         return [
             'subject_id' => Subject::factory(),
+            'cycle' => 0,
             'name' => fake()->sentence(3),
             'position' => 0,
             'completed_at' => null,
@@ -30,6 +31,18 @@ class TopicFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'completed_at' => now(),
+        ]);
+    }
+
+    /**
+     * Posiciona a tarefa na fila da trilha: em que ciclo ela cai e em que
+     * ponto da sequência do plano.
+     */
+    public function inQueue(int $cycle, int $position): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'cycle' => $cycle,
+            'position' => $position,
         ]);
     }
 }

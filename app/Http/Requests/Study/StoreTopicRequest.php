@@ -16,6 +16,10 @@ class StoreTopicRequest extends FormRequest
         return [
             'subject_id' => ['required', 'integer'],
             'name' => ['required', 'string', 'max:255'],
+            // Ausente significa "o ciclo em que a trilha está", resolvido no
+            // controller — quem adiciona uma tarefa pela tela do plano não
+            // deveria precisar saber o número do ciclo corrente.
+            'cycle' => ['nullable', 'integer', 'min:0', 'max:999'],
         ];
     }
 

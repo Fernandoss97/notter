@@ -185,6 +185,7 @@ function IdleView({
                     }
                     plan={plan}
                     preset={preset}
+                    dueReviews={dueReviews}
                 />
                 <ReviewQueue
                     reviews={dueReviews}
@@ -248,12 +249,19 @@ function TodaySummary({
 function StartSessionPanel({
     plan,
     preset,
+    dueReviews,
 }: {
     plan: StudyPlanSummary;
     preset: { subjectId: number; topicId: number | null } | null;
+    dueReviews: DueReview[];
 }) {
-    const suggestion = suggestNextStudy(plan.subjects);
-    const initial = preset ?? suggestion;
+    // A ordem de quem decide o que já vem escolhido: o clique do usuário na
+    // fila, depois a revisão mais atrasada (a mesma primeira linha da fila
+    // ao lado), e só então a próxima tarefa da trilha.
+    const dueReview = dueReviews[0]
+        ? { subjectId: dueReviews[0].subjectId, topicId: dueReviews[0].topicId }
+        : null;
+    const initial = preset ?? dueReview ?? suggestNextStudy(plan.subjects);
 
     const form = useForm({
         subject_id: initial ? String(initial.subjectId) : '',

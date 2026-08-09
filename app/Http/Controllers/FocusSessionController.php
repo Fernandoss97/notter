@@ -284,26 +284,31 @@ class FocusSessionController extends Controller
     }
 
     /**
-     * @return array{id: int, name: string, priority: string, topics: array<int, array{id: int, name: string, completed: bool, reviewStatus: string|null}>}
+     * @return array{id: int, name: string, topics: array<int, array{id: int, name: string, cycle: int, position: int, completed: bool, reviewStatus: string|null}>}
      */
     private function subjectProp(Subject $subject): array
     {
         return [
             'id' => $subject->id,
             'name' => $subject->name,
-            'priority' => $subject->priority->value,
             'topics' => $subject->topics->map($this->topicProp(...))->all(),
         ];
     }
 
     /**
-     * @return array{id: int, name: string, completed: bool, reviewStatus: string|null}
+     * `cycle` e `position` viajam junto porque a sugestão do que estudar
+     * agora é a ordem da trilha, e ela atravessa disciplinas — não dá para
+     * reconstruí-la a partir da lista aninhada de cada disciplina.
+     *
+     * @return array{id: int, name: string, cycle: int, position: int, completed: bool, reviewStatus: string|null}
      */
     private function topicProp(Topic $topic): array
     {
         return [
             'id' => $topic->id,
             'name' => $topic->name,
+            'cycle' => $topic->cycle,
+            'position' => $topic->position,
             'completed' => $topic->isCompleted(),
             'reviewStatus' => $topic->reviewStatus(),
         ];
