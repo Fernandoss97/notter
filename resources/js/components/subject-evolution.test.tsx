@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import type { SubjectEvolution, SubjectEvolutionRow } from '@/types/study';
 import { SubjectEvolutionTable } from './subject-evolution';
 
-function row(overrides: Partial<SubjectEvolutionRow> = {}): SubjectEvolutionRow {
+function row(
+    overrides: Partial<SubjectEvolutionRow> = {},
+): SubjectEvolutionRow {
     return {
         id: 1,
         name: 'Banco de Dados',

@@ -71,6 +71,39 @@ test('a subject without questions has no accuracy, not zero', function () {
             ->where('evolution.totals.accuracy', null));
 });
 
+test('the progress screen offers every plan for switching, in a stable order', function () {
+    $user = User::factory()->create();
+    StudyPlan::factory()->for($user)->create(['name' => 'Zeta']);
+    StudyPlan::factory()->for($user)->active()->create(['name' => 'Alfa']);
+    StudyPlan::factory()->create(['name' => 'De outra pessoa']);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('plans', 2)
+            ->where('plans.0.name', 'Alfa')
+            ->where('plans.0.isActive', true)
+            ->where('plans.1.name', 'Zeta')
+            ->where('plans.1.isActive', false));
+});
+
+test('the progress screen follows the plan that was just activated', function () {
+    $user = User::factory()->create();
+    $first = StudyPlan::factory()->for($user)->active()->create(['name' => 'Concurso XYZ']);
+    $second = StudyPlan::factory()->for($user)->create(['name' => 'Concurso ABC']);
+    Topic::factory()->for(Subject::factory()->for($second))->create();
+
+    $this->actingAs($user)->post("/plano/{$second->id}/activate");
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('plan.name', 'Concurso ABC')
+            ->where('pace.tasksTotal', 1));
+});
+
 test('the evolution is empty without an active plan', function () {
     $user = User::factory()->create();
 

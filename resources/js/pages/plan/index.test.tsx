@@ -1,11 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type {
-    ActiveStudyPlan,
-    PlanSubject,
-    PlanSummary,
-} from '@/types/study';
+import type { ActiveStudyPlan, PlanSubject, PlanSummary } from '@/types/study';
 import PlanIndex from './index';
 
 const { post, formPost } = vi.hoisted(() => ({

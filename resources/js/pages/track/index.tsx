@@ -63,7 +63,9 @@ export default function TrackIndex({ plan, cycles }: TrackIndexProps) {
                                 <>
                                     <ImportDialog />
                                     <Button variant="outline" asChild>
-                                        <Link href={planIndex()}>Ver plano</Link>
+                                        <Link href={planIndex()}>
+                                            Ver plano
+                                        </Link>
                                     </Button>
                                 </>
                             }
@@ -145,9 +147,9 @@ function ImportDialog() {
                     <DialogTitle>Importar trilha da planilha</DialogTitle>
                     <DialogDescription>
                         Cole as linhas direto da planilha, com as colunas
-                        trilha, tarefa, disciplina e título — ou só disciplina
-                        e título. Disciplinas novas são criadas, e tarefas que
-                        já estão na trilha são ignoradas.
+                        trilha, tarefa, disciplina e título — ou só disciplina e
+                        título. Disciplinas novas são criadas, e tarefas que já
+                        estão na trilha são ignoradas.
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={submit} className="flex flex-col gap-4">
@@ -301,7 +303,7 @@ function TaskRow({ task }: { task: TrackTask }) {
                 {completed && '✓'}
             </button>
 
-            <span className="w-8 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+            <span className="w-8 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
                 {task.number}
             </span>
 

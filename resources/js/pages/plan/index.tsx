@@ -1,10 +1,11 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import type { InertiaFormProps } from '@inertiajs/react';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Page } from '@/components/page';
 import { PageHeader } from '@/components/page-header';
 import { Panel } from '@/components/panel';
+import { PlanSwitcher } from '@/components/plan-switcher';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -25,7 +26,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { show as showFocus } from '@/routes/focus';
 import {
-    activate,
     index,
     store as storePlan,
     update as updatePlan,
@@ -60,13 +60,6 @@ const EMPTY_PLAN: PlanFormData = {
     weekly_goal_minutes: 20 * 60,
     exam_date: '',
 };
-
-/**
- * Trocar de plano costuma responder em menos de 100ms. Esmaecer a tela
- * nesse tempo só produz um piscar — o indicador de espera espera para ver
- * se a espera é mesmo perceptível.
- */
-const BUSY_DELAY_MS = 180;
 
 interface PlanIndexProps {
     plans: PlanSummary[];
@@ -282,61 +275,19 @@ function ActivePlanView({
     plans: PlanSummary[];
     plan: ActiveStudyPlan;
 }) {
-    const [pendingPlanId, setPendingPlanId] = useState<number | null>(null);
     const [pendingSubject, setPendingSubject] = useState<string | null>(null);
     const topicsTotal = plan.subjects.reduce(
         (total, subject) => total + subject.topics.length,
         0,
     );
-    // O conteúdo inteiro do plano é substituído pela resposta. A seleção
-    // move na hora, a espera só se anuncia se demorar, e a lista nova entra
+    // O conteúdo inteiro do plano é substituído pela resposta da troca de
+    // plano: a espera só se anuncia se demorar, e a lista nova entra
     // escalonada (a `key` do plano remonta os cards) em vez de trocar seco.
     const [busy, setBusy] = useState(false);
-    const busyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const latestSwitch = useRef<number | null>(null);
     const switchingClassName = cn(
         'transition-opacity duration-base ease-out',
         busy && 'opacity-50',
     );
-
-    function clearBusyTimer() {
-        if (busyTimer.current !== null) {
-            clearTimeout(busyTimer.current);
-            busyTimer.current = null;
-        }
-    }
-
-    useEffect(() => clearBusyTimer, []);
-
-    function switchPlan(planId: number) {
-        setPendingPlanId(planId);
-        latestSwitch.current = planId;
-
-        if (busyTimer.current === null) {
-            busyTimer.current = setTimeout(() => setBusy(true), BUSY_DELAY_MS);
-        }
-
-        router.post(
-            activate(planId).url,
-            {},
-            {
-                preserveScroll: true,
-                showProgress: false,
-                onFinish: () => {
-                    // Uma troca mais nova cancela a anterior; o `onFinish` da
-                    // cancelada não pode encerrar a espera de quem a substituiu.
-                    if (latestSwitch.current !== planId) {
-                        return;
-                    }
-
-                    latestSwitch.current = null;
-                    clearBusyTimer();
-                    setBusy(false);
-                    setPendingPlanId(null);
-                },
-            },
-        );
-    }
 
     return (
         <>
@@ -364,27 +315,11 @@ function ActivePlanView({
                 />
             </div>
 
-            {plans.length > 1 && (
-                <div className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground">
-                        Plano ativo
-                    </span>
-                    <SegmentedControl
-                        options={plans.map((p) => ({
-                            value: String(p.id),
-                            label: p.name,
-                        }))}
-                        value={String(pendingPlanId ?? plan.id)}
-                        onValueChange={(value) => switchPlan(Number(value))}
-                    />
-                    {busy && (
-                        <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Spinner />
-                            Trocando…
-                        </span>
-                    )}
-                </div>
-            )}
+            <PlanSwitcher
+                plans={plans}
+                activePlanId={plan.id}
+                onBusyChange={setBusy}
+            />
 
             <div
                 aria-busy={busy}

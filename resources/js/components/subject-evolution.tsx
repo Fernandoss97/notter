@@ -39,16 +39,31 @@ export function SubjectEvolutionTable({
                         className="transition-colors duration-fast ease-out hover:bg-muted/60"
                     >
                         <td className={td}>{row.name}</td>
-                        <td className={cn(td, 'text-right font-mono tabular-nums')}>
+                        <td
+                            className={cn(
+                                td,
+                                'text-right font-mono tabular-nums',
+                            )}
+                        >
                             {row.tasksDone}/{row.tasksTotal}
                         </td>
                         <td className={cn(td, 'w-40')}>
                             <ProgressBar value={row.progress} showLabel />
                         </td>
-                        <td className={cn(td, 'text-right font-mono tabular-nums')}>
+                        <td
+                            className={cn(
+                                td,
+                                'text-right font-mono tabular-nums',
+                            )}
+                        >
                             {row.exercises > 0 ? row.exercises : '—'}
                         </td>
-                        <td className={cn(td, 'text-right font-mono tabular-nums')}>
+                        <td
+                            className={cn(
+                                td,
+                                'text-right font-mono tabular-nums',
+                            )}
+                        >
                             {row.exercises > 0 ? row.correct : '—'}
                         </td>
                         <td

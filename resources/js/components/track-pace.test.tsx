@@ -98,7 +98,9 @@ describe('TrackPacePanel', () => {
             />,
         );
 
-        expect(screen.getByText(/A trilha ainda não tem tarefas/)).toBeInTheDocument();
+        expect(
+            screen.getByText(/A trilha ainda não tem tarefas/),
+        ).toBeInTheDocument();
     });
 
     it('writes fractional paces with a comma', () => {

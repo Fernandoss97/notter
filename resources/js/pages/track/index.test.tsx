@@ -146,7 +146,10 @@ describe('TrackIndex', () => {
                     cycle({
                         done: 1,
                         tasks: [
-                            task({ completed: true, completedOn: '14/03/2026' }),
+                            task({
+                                completed: true,
+                                completedOn: '14/03/2026',
+                            }),
                         ],
                     }),
                 ]}
