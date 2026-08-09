@@ -75,7 +75,6 @@ class DashboardController extends Controller
                 'id' => $plan->id,
                 'name' => $plan->name,
                 'weeklyGoalMinutes' => $plan->weekly_goal_minutes,
-                'examOn' => $plan->exam_date?->format('d/m/Y'),
             ] : null,
             'stats' => [
                 'weekMinutes' => $this->minutesStudied($user, $weekStart, now()->endOfWeek(), $excludeBreaks, $activeSession),

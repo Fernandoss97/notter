@@ -113,8 +113,6 @@ export type DashboardPlan = {
     id: number;
     name: string;
     weeklyGoalMinutes: number;
-    /** Data da prova, dd/mm/aaaa, ou null quando não há uma marcada. */
-    examOn: string | null;
 };
 
 export type TrackPace = {
