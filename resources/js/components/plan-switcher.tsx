@@ -100,10 +100,11 @@ export function PlanSwitcher({
                 onValueChange={(value) => switchPlan(Number(value))}
             />
             {busy && (
-                <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Spinner />
-                    Trocando…
-                </span>
+                <Spinner
+                    data-slot="plan-switcher-busy"
+                    aria-label="Trocando de plano"
+                    className="text-muted-foreground"
+                />
             )}
         </div>
     );

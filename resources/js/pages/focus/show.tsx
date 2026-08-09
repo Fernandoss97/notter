@@ -5,6 +5,7 @@ import { FocusTimer } from '@/components/focus-timer';
 import InputError from '@/components/input-error';
 import { Page } from '@/components/page';
 import { Panel } from '@/components/panel';
+import { PlanSwitcher } from '@/components/plan-switcher';
 import { ReviewQueue } from '@/components/review-queue';
 import { SessionNotes } from '@/components/session-notes';
 import { Button } from '@/components/ui/button';
@@ -56,6 +57,7 @@ import type {
     ActivityType,
     DueReview,
     FocusSession,
+    PlanSummary,
     PomodoroSettingSummary,
     StudyPlanSummary,
     TodayProgress,
@@ -66,6 +68,7 @@ const ACTIVITY_OPTIONS: { value: ActivityType; label: string }[] = (
 ).map(([value, label]) => ({ value, label }));
 
 interface FocusShowProps {
+    plans: PlanSummary[];
     plan: StudyPlanSummary | null;
     session: FocusSession | null;
     pomodoroSetting: PomodoroSettingSummary;
@@ -75,6 +78,7 @@ interface FocusShowProps {
 }
 
 export default function FocusShow({
+    plans,
     plan,
     session,
     pomodoroSetting,
@@ -101,6 +105,7 @@ export default function FocusShow({
             ) : (
                 <Page>
                     <IdleView
+                        plans={plans}
                         plan={plan}
                         today={today}
                         todayPomodoros={todayPomodoros}
@@ -140,14 +145,20 @@ function EmptyPlanState() {
 /**
  * A tela sem sessão em andamento: a decisão do que estudar, com o
  * progresso do dia e a fila de revisões ao lado para embasá-la.
+ *
+ * É também o único momento em que trocar de plano faz sentido nesta tela —
+ * com o cronômetro correndo, a sessão já pertence ao plano em que começou,
+ * e o seletor convidaria a uma troca que não a acompanharia.
  */
 function IdleView({
+    plans,
     plan,
     today,
     todayPomodoros,
     dueReviews,
     focusMinutes,
 }: {
+    plans: PlanSummary[];
     plan: StudyPlanSummary;
     today: TodayProgress;
     todayPomodoros: number;
@@ -158,10 +169,21 @@ function IdleView({
         subjectId: number;
         topicId: number | null;
     } | null>(null);
+    const [busy, setBusy] = useState(false);
+    const switchingClassName = cn(
+        'transition-opacity duration-base ease-out',
+        busy && 'opacity-50',
+    );
 
     return (
         <>
-            <div className="flex items-center justify-between">
+            <div
+                aria-busy={busy}
+                className={cn(
+                    'flex items-center justify-between',
+                    switchingClassName,
+                )}
+            >
                 <div>
                     <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
                         Pronto para focar
@@ -173,15 +195,28 @@ function IdleView({
                 <TodaySummary today={today} pomodoros={todayPomodoros} inline />
             </div>
 
-            <div className="grid grid-cols-[1fr_360px] items-start gap-6">
+            <PlanSwitcher
+                plans={plans}
+                activePlanId={plan.id}
+                onBusyChange={setBusy}
+            />
+
+            <div
+                aria-busy={busy}
+                className={cn(
+                    'grid grid-cols-[1fr_360px] items-start gap-6',
+                    switchingClassName,
+                )}
+            >
                 {/* A `key` remonta o formulário quando a fila ao lado
-                    escolhe um tópico: é o jeito React de reiniciar estado
+                    escolhe um tópico, ou quando a troca de plano traz
+                    outras disciplinas: é o jeito React de reiniciar estado
                     a partir de uma prop, sem sincronizar em efeito. */}
                 <StartSessionPanel
                     key={
                         preset
                             ? `${preset.subjectId}-${preset.topicId}`
-                            : 'suggested'
+                            : `suggested-${plan.id}`
                     }
                     plan={plan}
                     preset={preset}

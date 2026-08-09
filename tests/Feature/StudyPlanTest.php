@@ -208,6 +208,69 @@ test('completing a topic schedules its first review', function () {
     expect($topic->reviews()->count())->toBe(1);
 });
 
+test('a topic can be unmarked, taking its review schedule with it', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+    $subject = Subject::factory()->for($plan)->create();
+    $topic = Topic::factory()->for($subject)->create();
+
+    $this->actingAs($user)
+        ->from(route('track.index'))
+        ->post("/plano/topics/{$topic->id}/complete");
+
+    expect($topic->refresh()->completed_at)->not->toBeNull()
+        ->and($topic->reviews()->count())->toBe(1);
+
+    $this->actingAs($user)
+        ->from(route('track.index'))
+        ->post("/plano/topics/{$topic->id}/uncomplete")
+        ->assertRedirect(route('track.index'));
+
+    // O ciclo de revisão nasce da conclusão: desfazer a conclusão desfaz o
+    // ciclo, senão a próxima conclusão criaria uma segunda revisão de
+    // sequência 1 no mesmo tópico.
+    expect($topic->refresh()->completed_at)->toBeNull()
+        ->and($topic->reviews()->count())->toBe(0);
+});
+
+test('unmarking clears reviews already completed too', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+    $topic = Topic::factory()->for(Subject::factory()->for($plan))->completed()->create();
+    Review::factory()->for($topic)->create(['sequence' => 1, 'completed_at' => now()]);
+    Review::factory()->for($topic)->create(['sequence' => 2]);
+
+    $this->actingAs($user)
+        ->from(route('track.index'))
+        ->post("/plano/topics/{$topic->id}/uncomplete");
+
+    expect($topic->reviews()->count())->toBe(0);
+});
+
+test('unmarking a topic that was never completed changes nothing', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+    $topic = Topic::factory()->for(Subject::factory()->for($plan))->create();
+
+    $this->actingAs($user)
+        ->from(route('track.index'))
+        ->post("/plano/topics/{$topic->id}/uncomplete")
+        ->assertRedirect(route('track.index'));
+
+    expect($topic->refresh()->completed_at)->toBeNull();
+});
+
+test('unmarking a topic requires ownership', function () {
+    $user = User::factory()->create();
+    $foreignTopic = Topic::factory()->completed()->create();
+
+    $this->actingAs($user)
+        ->post("/plano/topics/{$foreignTopic->id}/uncomplete")
+        ->assertForbidden();
+
+    expect($foreignTopic->refresh()->completed_at)->not->toBeNull();
+});
+
 test('completing a topic requires ownership', function () {
     $user = User::factory()->create();
     $foreignTopic = Topic::factory()->create();

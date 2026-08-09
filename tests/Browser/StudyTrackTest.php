@@ -36,6 +36,39 @@ test('a user can add a task to the track and complete it', function () {
         ->assertSee('Em dia')
         ->assertSee('1 de 1 tarefas')
         ->assertNoJavaScriptErrors();
+
+    // E o clique errado tem volta.
+    $page->click('[aria-label="Desmarcar Estudo da Aula 00 como concluída"]')
+        ->assertSee('0 de 1 tarefas')
+        ->assertDontSee('Em dia')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the track switches between plans', function () {
+    $user = User::factory()->create();
+    $xyz = StudyPlan::factory()->for($user)->active()->create(['name' => 'Concurso XYZ']);
+    $abc = StudyPlan::factory()->for($user)->create(['name' => 'Concurso ABC']);
+
+    Topic::factory()->for(Subject::factory()->for($xyz))->create(['name' => 'Aula de XYZ']);
+    Topic::factory()->for(Subject::factory()->for($abc))->create(['name' => 'Aula de ABC']);
+
+    $page = visit('/login')
+        ->fill('email', $user->email)
+        ->fill('password', 'password')
+        ->click('Log in')
+        ->assertPathIs('/foco')
+        ->assertNoJavaScriptErrors();
+
+    $page->hover('[data-slot="sidebar"]')
+        ->click('Trilha')
+        ->assertPathIs('/trilha')
+        ->assertSee('Aula de XYZ')
+        ->assertNoJavaScriptErrors();
+
+    $page->click('[data-slot="segmented-control"] button:text-is("Concurso ABC")')
+        ->assertSee('Aula de ABC')
+        ->assertDontSee('Aula de XYZ')
+        ->assertNoJavaScriptErrors();
 });
 
 test('a user can record the questions of a task by hand', function () {

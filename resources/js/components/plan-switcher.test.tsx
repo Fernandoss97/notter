@@ -58,14 +58,18 @@ describe('PlanSwitcher', () => {
         expect(onBusyChange).not.toHaveBeenCalled();
 
         await waitFor(() =>
-            expect(screen.getByText('Trocando…')).toBeInTheDocument(),
+            expect(
+                screen.getByRole('status', { name: 'Trocando de plano' }),
+            ).toBeInTheDocument(),
         );
         expect(onBusyChange).toHaveBeenCalledWith(true);
 
         act(() => post.mock.calls[0][2].onFinish());
 
         expect(onBusyChange).toHaveBeenLastCalledWith(false);
-        expect(screen.queryByText('Trocando…')).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('status', { name: 'Trocando de plano' }),
+        ).not.toBeInTheDocument();
     });
 
     it('keeps the newest switch pending when an older one settles', async () => {

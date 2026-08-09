@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Study\ActivateStudyPlan;
+use App\Concerns\ListsStudyPlans;
 use App\Http\Requests\Study\StoreStudyPlanRequest;
 use App\Http\Requests\Study\UpdateStudyPlanRequest;
 use App\Models\StudyPlan;
@@ -15,26 +16,18 @@ use Inertia\Response;
 
 class StudyPlanController extends Controller
 {
+    use ListsStudyPlans;
+
     /**
      * Show every plan the user has (A9) and the full subject/topic
      * breakdown of whichever one is active.
      */
     public function index(Request $request): Response
     {
-        $user = $request->user();
-        // Ordem estável: o seletor de plano ativo é feito de alvos clicáveis,
-        // e promover o ativo para a frente os faria dançar a cada troca.
-        $plans = $user->studyPlans()->orderBy('name')->get();
-        $activePlan = $user->activeStudyPlan()->with('subjects.topics.reviews')->first();
+        $activePlan = $request->user()->activeStudyPlan()->with('subjects.topics.reviews')->first();
 
         return Inertia::render('plan/index', [
-            // Qual deles está ativo não viaja aqui: quem marca a seleção é o
-            // `activePlan` logo abaixo, e um segundo lugar dizendo a mesma
-            // coisa é um lugar a mais para discordar.
-            'plans' => $plans->map(fn (StudyPlan $plan) => [
-                'id' => $plan->id,
-                'name' => $plan->name,
-            ])->all(),
+            'plans' => $this->planOptions($request),
             'activePlan' => $activePlan ? [
                 'id' => $activePlan->id,
                 'name' => $activePlan->name,

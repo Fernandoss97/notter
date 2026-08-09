@@ -4,6 +4,7 @@ import type { FormEvent } from 'react';
 import { Page } from '@/components/page';
 import { PageHeader } from '@/components/page-header';
 import { Panel } from '@/components/panel';
+import { PlanSwitcher } from '@/components/plan-switcher';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -33,20 +34,32 @@ import {
     complete as completeTopic,
     exercises as updateExercises,
     store as storeTopic,
+    uncomplete as uncompleteTopic,
 } from '@/routes/topics';
 // `import` é palavra reservada, então o Wayfinder gera `importMethod`.
 import { importMethod as importTrack, index } from '@/routes/track';
-import type { TrackCycle, TrackPlan, TrackTask } from '@/types/study';
+import type {
+    PlanSummary,
+    TrackCycle,
+    TrackPlan,
+    TrackTask,
+} from '@/types/study';
 
 interface TrackIndexProps {
+    plans: PlanSummary[];
     plan: TrackPlan | null;
     cycles: TrackCycle[];
 }
 
-export default function TrackIndex({ plan, cycles }: TrackIndexProps) {
+export default function TrackIndex({ plans, plan, cycles }: TrackIndexProps) {
     const [pendingTask, setPendingTask] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
     const total = cycles.reduce((sum, cycle) => sum + cycle.total, 0);
     const done = cycles.reduce((sum, cycle) => sum + cycle.done, 0);
+    const switchingClassName = cn(
+        'transition-opacity duration-base ease-out',
+        busy && 'opacity-50',
+    );
 
     return (
         <>
@@ -56,19 +69,27 @@ export default function TrackIndex({ plan, cycles }: TrackIndexProps) {
                     <NoPlanPanel />
                 ) : (
                     <>
-                        <PageHeader
-                            title="Trilha"
-                            subtitle={`${plan.name} · ${done} de ${total} tarefas concluídas`}
-                            actions={
-                                <>
-                                    <ImportDialog />
-                                    <Button variant="outline" asChild>
-                                        <Link href={planIndex()}>
-                                            Ver plano
-                                        </Link>
-                                    </Button>
-                                </>
-                            }
+                        <div aria-busy={busy} className={switchingClassName}>
+                            <PageHeader
+                                title="Trilha"
+                                subtitle={`${plan.name} · ${done} de ${total} tarefas concluídas`}
+                                actions={
+                                    <>
+                                        <ImportDialog />
+                                        <Button variant="outline" asChild>
+                                            <Link href={planIndex()}>
+                                                Ver plano
+                                            </Link>
+                                        </Button>
+                                    </>
+                                }
+                            />
+                        </div>
+
+                        <PlanSwitcher
+                            plans={plans}
+                            activePlanId={plan.id}
+                            onBusyChange={setBusy}
                         />
 
                         <AddTaskPanel
@@ -78,7 +99,14 @@ export default function TrackIndex({ plan, cycles }: TrackIndexProps) {
                             onSettled={() => setPendingTask(null)}
                         />
 
-                        <div className="stagger-children flex flex-col gap-4">
+                        <div
+                            aria-busy={busy}
+                            className={cn(
+                                'stagger-children flex flex-col gap-4',
+                                switchingClassName,
+                            )}
+                            key={plan.id}
+                        >
                             {cycles.map((cycle) => (
                                 <CyclePanel key={cycle.cycle} cycle={cycle} />
                             ))}
@@ -260,18 +288,24 @@ function CyclePanel({ cycle }: { cycle: TrackCycle }) {
 }
 
 function TaskRow({ task }: { task: TrackTask }) {
-    const [pendingComplete, setPendingComplete] = useState(false);
-    const completed = task.completed || pendingComplete;
+    // Três estados, não dois: `null` é "nada em voo", e o eco precisa
+    // funcionar nos dois sentidos — um desmarcar otimista que renderizasse
+    // como concluído faria o clique parecer não ter acontecido.
+    const [pending, setPending] = useState<boolean | null>(null);
+    const completed = pending ?? task.completed;
 
-    function markComplete() {
-        setPendingComplete(true);
+    function toggle() {
+        const next = !completed;
+        setPending(next);
+
         router.post(
-            completeTopic(task.id).url,
+            (next ? completeTopic(task.id) : uncompleteTopic(task.id)).url,
             {},
             {
                 preserveScroll: true,
                 showProgress: false,
-                onError: () => setPendingComplete(false),
+                onError: () => setPending(null),
+                onSuccess: () => setPending(null),
             },
         );
     }
@@ -283,20 +317,20 @@ function TaskRow({ task }: { task: TrackTask }) {
         >
             <button
                 type="button"
-                onClick={completed ? undefined : markComplete}
-                disabled={completed}
+                onClick={toggle}
+                aria-pressed={completed}
                 aria-label={
                     completed
-                        ? `${task.name} concluída`
+                        ? `Desmarcar ${task.name} como concluída`
                         : `Marcar ${task.name} como concluída`
                 }
                 className={cn(
                     'flex size-4 shrink-0 items-center justify-center rounded-[4px] border text-[11px]',
                     'transition-[background-color,border-color,color,box-shadow,scale] duration-fast ease-out',
                     'outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
-                    'enabled:active:scale-90 enabled:active:duration-instant',
+                    'active:scale-90 active:duration-instant',
                     completed
-                        ? 'border-transparent bg-status-success text-white'
+                        ? 'border-transparent bg-status-success text-white hover:bg-status-success/80'
                         : 'border-border-strong bg-transparent hover:border-focus-500',
                 )}
             >

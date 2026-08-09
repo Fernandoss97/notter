@@ -34,6 +34,7 @@ import { store as storeSubject } from '@/routes/subjects';
 import {
     complete as completeTopic,
     store as storeTopic,
+    uncomplete as uncompleteTopic,
 } from '@/routes/topics';
 import type {
     ActiveStudyPlan,
@@ -583,18 +584,24 @@ function TopicRow({
     topic: PlanSubject['topics'][number];
     showCycle: boolean;
 }) {
-    const [pendingComplete, setPendingComplete] = useState(false);
-    const completed = topic.completed || pendingComplete;
+    // Três estados, não dois: `null` é "nada em voo", e o eco precisa
+    // funcionar nos dois sentidos — um desmarcar otimista que renderizasse
+    // como concluído faria o clique parecer não ter acontecido.
+    const [pending, setPending] = useState<boolean | null>(null);
+    const completed = pending ?? topic.completed;
 
-    function markComplete() {
-        setPendingComplete(true);
+    function toggle() {
+        const next = !completed;
+        setPending(next);
+
         router.post(
-            completeTopic(topic.id).url,
+            (next ? completeTopic(topic.id) : uncompleteTopic(topic.id)).url,
             {},
             {
                 preserveScroll: true,
                 showProgress: false,
-                onError: () => setPendingComplete(false),
+                onError: () => setPending(null),
+                onSuccess: () => setPending(null),
             },
         );
     }
@@ -603,20 +610,20 @@ function TopicRow({
         <div className="flex items-center gap-3 rounded-sm px-2 py-1.5 transition-colors duration-fast ease-out hover:bg-muted">
             <button
                 type="button"
-                onClick={completed ? undefined : markComplete}
-                disabled={completed}
+                onClick={toggle}
+                aria-pressed={completed}
                 aria-label={
                     completed
-                        ? `${topic.name} concluído`
+                        ? `Desmarcar ${topic.name} como concluído`
                         : `Marcar ${topic.name} como concluído`
                 }
                 className={cn(
                     'flex size-4 shrink-0 items-center justify-center rounded-[4px] border text-[11px]',
                     'transition-[background-color,border-color,color,box-shadow,scale] duration-fast ease-out',
                     'outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
-                    'enabled:active:scale-90 enabled:active:duration-instant',
+                    'active:scale-90 active:duration-instant',
                     completed
-                        ? 'border-transparent bg-status-success text-white'
+                        ? 'border-transparent bg-status-success text-white hover:bg-status-success/80'
                         : 'border-border-strong bg-transparent hover:border-focus-500',
                 )}
             >

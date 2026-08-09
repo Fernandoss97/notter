@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Study\ResolveCurrentFocusSession;
 use App\Concerns\CalculatesPercentage;
+use App\Concerns\ListsStudyPlans;
 use App\Concerns\SummarizesStudyTime;
 use App\Concerns\SummarizesTrackPace;
 use App\Models\Enums\FocusSessionState;
@@ -19,6 +20,7 @@ use Inertia\Response;
 class DashboardController extends Controller
 {
     use CalculatesPercentage;
+    use ListsStudyPlans;
     use SummarizesStudyTime;
     use SummarizesTrackPace;
 
@@ -71,14 +73,7 @@ class DashboardController extends Controller
         $streaks = $this->streaks($user);
 
         return Inertia::render('dashboard', [
-            // Mesma ordem estável da tela de plano: o seletor é feito de
-            // alvos clicáveis, e promover o ativo para a frente os faria
-            // dançar a cada troca.
-            'plans' => $user->studyPlans()->orderBy('name')->get()
-                ->map(fn (StudyPlan $each) => [
-                    'id' => $each->id,
-                    'name' => $each->name,
-                ])->all(),
+            'plans' => $this->planOptions($request),
             'plan' => $plan ? [
                 'id' => $plan->id,
                 'name' => $plan->name,

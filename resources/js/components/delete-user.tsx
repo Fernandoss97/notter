@@ -1,6 +1,7 @@
 import { Form } from '@inertiajs/react';
 import { useRef } from 'react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
+import DeleteStudyData from '@/components/delete-study-data';
 import InputError from '@/components/input-error';
 import { Panel } from '@/components/panel';
 import PasswordInput from '@/components/password-input';
@@ -15,12 +16,20 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 
 export default function DeleteUser() {
     const passwordInput = useRef<HTMLInputElement>(null);
 
     return (
         <Panel title="Zona de risco">
+            {/* O recomeço vem antes da saída: quem quer zerar a trilha para
+                o próximo concurso não deveria encontrar só o botão de
+                excluir a conta. */}
+            <DeleteStudyData />
+
+            <Separator />
+
             <div className="flex items-center justify-between gap-4">
                 <div>
                     <div className="text-sm font-medium text-foreground">
