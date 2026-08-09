@@ -58,6 +58,26 @@ test('it ignores blank lines and stray carriage returns', function () {
     expect($rows)->toHaveCount(2);
 });
 
+test('a row of empty columns is padding, not a broken line', function () {
+    // É a forma exata das linhas separadoras de uma trilha real: fórmulas
+    // que resultam em vazio viram colunas vazias na colagem, no meio das
+    // tarefas de verdade.
+    $rows = parseTrack(implode("\n", [
+        "0\t16\tBanco de Dados\tEstudo da Aula 07",
+        "\t\t\t",
+        "1\t17\tBanco de Dados\tEstudo da Aula 08",
+    ]));
+
+    expect($rows)->toHaveCount(2)
+        ->and($rows[1]['cycle'])->toBe(1);
+});
+
+test('a line missing only the subject is still an error', function () {
+    // Diferente da linha inteiramente vazia: aqui havia intenção de
+    // registrar algo, e engolir isso em silêncio esconderia o erro.
+    parseTrack("0\t16\t\tEstudo da Aula 07");
+})->throws(InvalidTrackImportException::class, 'Linha 1');
+
 test('an empty cycle column means the current cycle', function () {
     $rows = parseTrack("\t1\tPortuguês\tAula 01");
 

@@ -77,6 +77,18 @@ test('re-importing the same paste adds only what is new', function () {
         ->and($plan->topics()->get()->last()->name)->toBe('Estudo da Aula 02');
 });
 
+test('a paste that repeats a task imports it once', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+
+    $this->actingAs($user)->post('/trilha/importar', ['content' => trackPaste([
+        "0\t1\tBanco de Dados\tEstudo da Aula 00",
+        "0\t2\tBanco de Dados\tEstudo da Aula 00",
+    ])]);
+
+    expect($plan->topics()->count())->toBe(1);
+});
+
 test('the same title in a later cycle is another task', function () {
     $user = User::factory()->create();
     $plan = StudyPlan::factory()->for($user)->active()->create();
