@@ -96,7 +96,6 @@ export type PlanSubject = {
 export type PlanSummary = {
     id: number;
     name: string;
-    isActive: boolean;
 };
 
 export type ActiveStudyPlan = {

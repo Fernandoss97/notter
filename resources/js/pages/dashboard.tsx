@@ -56,12 +56,26 @@ export default function Dashboard({
     // Trocar de plano substitui a tela inteira: os números esmaecem
     // enquanto os do plano novo não chegam, em vez de trocarem seco.
     const [busy, setBusy] = useState(false);
+    const switchingClassName = cn(
+        'transition-opacity duration-base ease-out',
+        busy && 'opacity-50',
+    );
 
     return (
         <>
             <Head title="Progresso" />
             <Page>
-                <div className="flex items-center justify-between">
+                {/* O cabeçalho esmaece junto com o corpo: o nome do plano
+                    antigo em opacidade cheia sobre números já apagados é
+                    justamente o que a espera existe para não deixar
+                    acontecer. */}
+                <div
+                    aria-busy={busy}
+                    className={cn(
+                        'flex items-center justify-between',
+                        switchingClassName,
+                    )}
+                >
                     <div>
                         <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
                             Progresso
@@ -102,8 +116,8 @@ export default function Dashboard({
                         <div
                             aria-busy={busy}
                             className={cn(
-                                'flex flex-col gap-6 transition-opacity duration-base ease-out',
-                                busy && 'opacity-50',
+                                'flex flex-col gap-6',
+                                switchingClassName,
                             )}
                         >
                             <div className="stagger-children grid grid-cols-3 gap-6">

@@ -83,9 +83,7 @@ test('the progress screen offers every plan for switching, in a stable order', f
         ->assertInertia(fn ($page) => $page
             ->has('plans', 2)
             ->where('plans.0.name', 'Alfa')
-            ->where('plans.0.isActive', true)
-            ->where('plans.1.name', 'Zeta')
-            ->where('plans.1.isActive', false));
+            ->where('plans.1.name', 'Zeta'));
 });
 
 test('the progress screen follows the plan that was just activated', function () {

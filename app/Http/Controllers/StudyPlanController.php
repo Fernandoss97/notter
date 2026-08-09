@@ -28,10 +28,12 @@ class StudyPlanController extends Controller
         $activePlan = $user->activeStudyPlan()->with('subjects.topics.reviews')->first();
 
         return Inertia::render('plan/index', [
+            // Qual deles está ativo não viaja aqui: quem marca a seleção é o
+            // `activePlan` logo abaixo, e um segundo lugar dizendo a mesma
+            // coisa é um lugar a mais para discordar.
             'plans' => $plans->map(fn (StudyPlan $plan) => [
                 'id' => $plan->id,
                 'name' => $plan->name,
-                'isActive' => $plan->is_active,
             ])->all(),
             'activePlan' => $activePlan ? [
                 'id' => $activePlan->id,

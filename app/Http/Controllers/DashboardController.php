@@ -78,7 +78,6 @@ class DashboardController extends Controller
                 ->map(fn (StudyPlan $each) => [
                     'id' => $each->id,
                     'name' => $each->name,
-                    'isActive' => $each->is_active,
                 ])->all(),
             'plan' => $plan ? [
                 'id' => $plan->id,

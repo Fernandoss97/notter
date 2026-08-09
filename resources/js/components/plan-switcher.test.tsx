@@ -9,8 +9,8 @@ const { post } = vi.hoisted(() => ({ post: vi.fn() }));
 vi.mock('@inertiajs/react', () => ({ router: { post } }));
 
 const plans: PlanSummary[] = [
-    { id: 1, name: 'Concurso XYZ', isActive: true },
-    { id: 2, name: 'Concurso ABC', isActive: false },
+    { id: 1, name: 'Concurso XYZ' },
+    { id: 2, name: 'Concurso ABC' },
 ];
 
 describe('PlanSwitcher', () => {
@@ -71,10 +71,7 @@ describe('PlanSwitcher', () => {
     it('keeps the newest switch pending when an older one settles', async () => {
         render(
             <PlanSwitcher
-                plans={[
-                    ...plans,
-                    { id: 3, name: 'Concurso DEF', isActive: false },
-                ]}
+                plans={[...plans, { id: 3, name: 'Concurso DEF' }]}
                 activePlanId={1}
             />,
         );
