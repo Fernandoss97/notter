@@ -129,13 +129,21 @@ export type RecentDay = {
     minutes: number;
 };
 
-export type DashboardSubject = {
+export type SubjectEvolutionRow = {
     id: number;
     name: string;
-    topicsDone: number;
-    topicsTotal: number;
+    tasksDone: number;
+    tasksTotal: number;
     progress: number;
-    reviewStatus: ReviewStatus;
+    exercises: number;
+    correct: number;
+    /** Percentual de acerto, ou null quando não há questão resolvida. */
+    accuracy: number | null;
+};
+
+export type SubjectEvolution = {
+    rows: SubjectEvolutionRow[];
+    totals: Omit<SubjectEvolutionRow, 'id' | 'name'>;
 };
 
 export type RecentSession = {

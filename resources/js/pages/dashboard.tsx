@@ -2,6 +2,7 @@ import { Head, Link } from '@inertiajs/react';
 import { Page } from '@/components/page';
 import { Panel } from '@/components/panel';
 import { StatTile } from '@/components/stat-tile';
+import { SubjectEvolutionTable } from '@/components/subject-evolution';
 import { Button } from '@/components/ui/button';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { WeeklyBars } from '@/components/weekly-bars';
@@ -10,12 +11,18 @@ import { dashboard } from '@/routes';
 import { show as showFocus } from '@/routes/focus';
 import { index as showHistory } from '@/routes/history';
 import { index as showPlan } from '@/routes/plans';
-import type { DashboardPlan, DashboardStats, RecentDay } from '@/types/study';
+import type {
+    DashboardPlan,
+    DashboardStats,
+    RecentDay,
+    SubjectEvolution,
+} from '@/types/study';
 
 interface DashboardProps {
     plan: DashboardPlan | null;
     stats: DashboardStats;
     recentDays: RecentDay[];
+    evolution: SubjectEvolution | null;
 }
 
 /**
@@ -24,7 +31,12 @@ interface DashboardProps {
  * foco) — fica com a semana contra a meta e a constância, que não
  * aparecem em nenhum outro lugar.
  */
-export default function Dashboard({ plan, stats, recentDays }: DashboardProps) {
+export default function Dashboard({
+    plan,
+    stats,
+    recentDays,
+    evolution,
+}: DashboardProps) {
     const dailyGoal =
         stats.weekGoalMinutes > 0 ? Math.round(stats.weekGoalMinutes / 7) : 0;
 
@@ -116,6 +128,18 @@ export default function Dashboard({ plan, stats, recentDays }: DashboardProps) {
                                 days={recentDays}
                                 goalMinutes={dailyGoal}
                             />
+                        </Panel>
+
+                        <Panel title="Evolução por disciplina" pad={false}>
+                            {evolution && evolution.rows.length > 0 ? (
+                                <SubjectEvolutionTable evolution={evolution} />
+                            ) : (
+                                <p className="p-5 text-sm text-fg-2">
+                                    Nenhuma disciplina no plano ainda. A
+                                    evolução aparece aqui assim que houver
+                                    tarefas para acompanhar.
+                                </p>
+                            )}
                         </Panel>
 
                         <div className="flex gap-3">

@@ -6,6 +6,7 @@ use App\Actions\Study\ResolveCurrentFocusSession;
 use App\Concerns\SummarizesStudyTime;
 use App\Models\Enums\FocusSessionState;
 use App\Models\StudyPlan;
+use App\Models\Subject;
 use App\Models\Topic;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -35,10 +36,10 @@ class DashboardController extends Controller
     public function __construct(private ResolveCurrentFocusSession $resolveCurrentSession) {}
 
     /**
-     * A tela de retrospectiva. Deliberadamente não repete o que já está a
-     * um clique: disciplina por disciplina é o plano, sessão por sessão é
-     * o histórico, e o dia de hoje é a própria tela de foco. Aqui fica o
-     * que nenhuma delas mostra — a semana contra a meta e a constância.
+     * A tela de retrospectiva. Não repete o que já está a um clique:
+     * sessão por sessão é o histórico e o dia de hoje é a própria tela de
+     * foco. Aqui fica o que nenhuma delas mostra — a semana contra a meta,
+     * a constância e a evolução por disciplina (ver evolution()).
      */
     public function show(Request $request): Response
     {
@@ -81,7 +82,66 @@ class DashboardController extends Controller
                 'longestStreak' => $streaks['longest'],
             ],
             'recentDays' => $this->recentDays($user, $excludeBreaks),
+            'evolution' => $plan instanceof StudyPlan ? $this->evolution($plan) : null,
         ]);
+    }
+
+    /**
+     * Evolução por disciplina: tarefas, questões e acerto, mais a linha de
+     * totais.
+     *
+     * É a única exceção ao "não repete disciplina por disciplina": o plano
+     * mostra o avanço das tarefas, mas o acerto em questões — a medida de
+     * onde o estudo está falhando — não aparece em nenhuma outra tela.
+     *
+     * @return array{rows: array<int, array{id: int, name: string, tasksDone: int, tasksTotal: int, progress: int, exercises: int, correct: int, accuracy: int|null}>, totals: array{tasksDone: int, tasksTotal: int, progress: int, exercises: int, correct: int, accuracy: int|null}}
+     */
+    private function evolution(StudyPlan $plan): array
+    {
+        $rows = $plan->subjects->map(function (Subject $subject) {
+            $tasksTotal = $subject->topics->count();
+            $tasksDone = $subject->topics->filter(fn (Topic $topic) => $topic->isCompleted())->count();
+            $exercises = (int) $subject->topics->sum('exercises_total');
+            $correct = (int) $subject->topics->sum('exercises_correct');
+
+            return [
+                'id' => $subject->id,
+                'name' => $subject->name,
+                'tasksDone' => $tasksDone,
+                'tasksTotal' => $tasksTotal,
+                'progress' => $this->percent($tasksDone, $tasksTotal) ?? 0,
+                'exercises' => $exercises,
+                'correct' => $correct,
+                'accuracy' => $this->percent($correct, $exercises),
+            ];
+        });
+
+        $tasksDone = (int) $rows->sum('tasksDone');
+        $tasksTotal = (int) $rows->sum('tasksTotal');
+        $exercises = (int) $rows->sum('exercises');
+        $correct = (int) $rows->sum('correct');
+
+        return [
+            'rows' => $rows->all(),
+            'totals' => [
+                'tasksDone' => $tasksDone,
+                'tasksTotal' => $tasksTotal,
+                'progress' => $this->percent($tasksDone, $tasksTotal) ?? 0,
+                'exercises' => $exercises,
+                'correct' => $correct,
+                'accuracy' => $this->percent($correct, $exercises),
+            ],
+        ];
+    }
+
+    /**
+     * Percentual arredondado, ou `null` quando não há denominador —
+     * disciplina sem questão resolvida não tem desempenho 0%, tem
+     * desempenho nenhum.
+     */
+    private function percent(int $part, int $whole): ?int
+    {
+        return $whole > 0 ? (int) round($part / $whole * 100) : null;
     }
 
     /**
