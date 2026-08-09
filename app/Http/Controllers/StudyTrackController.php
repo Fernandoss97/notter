@@ -41,7 +41,7 @@ class StudyTrackController extends Controller
      * trilha). O número é derivado da posição na fila, não armazenado:
      * assim ele nunca fica furado depois de uma exclusão.
      *
-     * @return array<int, array{cycle: int, done: int, total: int, tasks: array<int, array{id: int, number: int, name: string, subjectName: string, completed: bool, completedOn: string|null, reviewStatus: string|null}>}>
+     * @return array<int, array{cycle: int, done: int, total: int, exercises: int, correct: int, accuracy: int|null, tasks: array<int, array{id: int, number: int, name: string, subjectName: string, completed: bool, completedOn: string|null, reviewStatus: string|null, exercisesTotal: int, exercisesCorrect: int, accuracy: int|null}>}>
      */
     private function cycles(StudyPlan $plan): array
     {
@@ -63,18 +63,26 @@ class StudyTrackController extends Controller
                         'completed' => $topic->isCompleted(),
                         'completedOn' => $topic->completed_at?->format('d/m/Y'),
                         'reviewStatus' => $topic->reviewStatus(),
+                        'exercisesTotal' => $topic->exercises_total,
+                        'exercisesCorrect' => $topic->exercises_correct,
+                        'accuracy' => $topic->accuracyPercent(),
                     ],
                 ];
             })
             ->groupBy('cycle')
             ->map(function ($rows, int $cycle) {
-                $tasks = $rows->pluck('task')->all();
+                $tasks = collect($rows->pluck('task')->all());
+                $exercises = (int) $tasks->sum('exercisesTotal');
+                $correct = (int) $tasks->sum('exercisesCorrect');
 
                 return [
                     'cycle' => $cycle,
-                    'done' => collect($tasks)->where('completed', true)->count(),
-                    'total' => count($tasks),
-                    'tasks' => $tasks,
+                    'done' => $tasks->where('completed', true)->count(),
+                    'total' => $tasks->count(),
+                    'exercises' => $exercises,
+                    'correct' => $correct,
+                    'accuracy' => $exercises > 0 ? (int) round($correct / $exercises * 100) : null,
+                    'tasks' => $tasks->all(),
                 ];
             })
             ->values()

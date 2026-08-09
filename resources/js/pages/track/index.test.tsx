@@ -4,9 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TrackCycle, TrackPlan, TrackTask } from '@/types/study';
 import TrackIndex from './index';
 
-const { post, formPost } = vi.hoisted(() => ({
+const { post, formPost, formPut } = vi.hoisted(() => ({
     post: vi.fn(),
     formPost: vi.fn(),
+    formPut: vi.fn(),
 }));
 
 vi.mock('@inertiajs/react', async () => {
@@ -39,6 +40,7 @@ vi.mock('@inertiajs/react', async () => {
                                 },
                     ),
                 post: formPost,
+                put: formPut,
                 reset: () => setState(initial),
                 clearErrors: vi.fn(),
                 transform: vi.fn(),
@@ -67,6 +69,9 @@ function task(overrides: Partial<TrackTask> = {}): TrackTask {
         completed: false,
         completedOn: null,
         reviewStatus: null,
+        exercisesTotal: 0,
+        exercisesCorrect: 0,
+        accuracy: null,
         ...overrides,
     };
 }
@@ -76,6 +81,9 @@ function cycle(overrides: Partial<TrackCycle> = {}): TrackCycle {
         cycle: 0,
         done: 0,
         total: 1,
+        exercises: 0,
+        correct: 0,
+        accuracy: null,
         tasks: [task()],
         ...overrides,
     };
@@ -85,6 +93,7 @@ describe('TrackIndex', () => {
     beforeEach(() => {
         post.mockReset();
         formPost.mockReset();
+        formPut.mockReset();
     });
 
     it('lists the queue with the task number and its subject', () => {
@@ -205,6 +214,80 @@ describe('TrackIndex', () => {
         );
         expect(screen.getByText('Estudo da Aula 05')).toBeInTheDocument();
         expect(screen.getByText('Adicionando…')).toBeInTheDocument();
+    });
+
+    it('reports the questions of a task and of its cycle', () => {
+        render(
+            <TrackIndex
+                plan={plan}
+                cycles={[
+                    cycle({
+                        exercises: 20,
+                        correct: 15,
+                        accuracy: 75,
+                        tasks: [
+                            task({
+                                exercisesTotal: 20,
+                                exercisesCorrect: 15,
+                                accuracy: 75,
+                            }),
+                        ],
+                    }),
+                ]}
+            />,
+        );
+
+        expect(
+            document.querySelector('[data-slot="track-task"]'),
+        ).toHaveTextContent('15/20 questões · 75%');
+        expect(
+            screen.getByText(/15\/20 questões · 75% de acerto/),
+        ).toBeInTheDocument();
+    });
+
+    it('says nothing about questions when none were recorded', () => {
+        render(<TrackIndex plan={plan} cycles={[cycle()]} />);
+
+        expect(screen.queryByText(/questões/)).not.toBeInTheDocument();
+    });
+
+    it('records the questions of a task, replacing the pair', async () => {
+        render(
+            <TrackIndex
+                plan={plan}
+                cycles={[
+                    cycle({
+                        tasks: [
+                            task({
+                                exercisesTotal: 10,
+                                exercisesCorrect: 8,
+                                accuracy: 80,
+                            }),
+                        ],
+                    }),
+                ]}
+            />,
+        );
+
+        await userEvent.click(
+            screen.getByRole('button', {
+                name: 'Registrar questões de Aula 00',
+            }),
+        );
+
+        // O diálogo abre com o que já está registrado: é correção, não
+        // um novo lançamento em branco.
+        expect(screen.getByLabelText('Questões feitas')).toHaveValue(10);
+        expect(screen.getByLabelText('Acertos')).toHaveValue(8);
+
+        await userEvent.clear(screen.getByLabelText('Acertos'));
+        await userEvent.type(screen.getByLabelText('Acertos'), '9');
+        await userEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+        expect(formPut).toHaveBeenCalledWith(
+            expect.stringContaining('/questoes'),
+            expect.objectContaining({ preserveScroll: true }),
+        );
     });
 
     it('points to the plan screen when there is no active plan', () => {

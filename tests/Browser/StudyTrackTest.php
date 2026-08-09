@@ -38,6 +38,33 @@ test('a user can add a task to the track and complete it', function () {
         ->assertNoJavaScriptErrors();
 });
 
+test('a user can record the questions of a task by hand', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+    $subject = Subject::factory()->for($plan)->create(['name' => 'Banco de Dados']);
+    Topic::factory()->for($subject)->inQueue(0, 0)->create(['name' => 'Aula 00 de BD']);
+
+    $page = visit('/login')
+        ->fill('email', $user->email)
+        ->fill('password', 'password')
+        ->click('Log in')
+        ->assertPathIs('/foco')
+        ->assertNoJavaScriptErrors();
+
+    $page->hover('[data-slot="sidebar"]')
+        ->click('Trilha')
+        ->assertPathIs('/trilha')
+        ->assertNoJavaScriptErrors();
+
+    $page->click('[aria-label="Registrar questões de Aula 00 de BD"]')
+        ->fill('exercises_total', '20')
+        ->fill('exercises_correct', '15')
+        ->click('[data-slot="dialog-content"] button:text-is("Salvar")')
+        ->assertSee('15/20 questões')
+        ->assertSee('75%')
+        ->assertNoJavaScriptErrors();
+});
+
 test('the track lists the queue across subjects, cycle by cycle', function () {
     $user = User::factory()->create();
     $plan = StudyPlan::factory()->for($user)->active()->create();

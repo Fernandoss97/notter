@@ -9,6 +9,7 @@ use App\Models\Enums\FocusSessionState;
 use App\Models\StudySession;
 use App\Models\Subject;
 use App\Models\Topic;
+use Illuminate\Support\Facades\DB;
 
 class CompleteFocusSession
 {
@@ -61,7 +62,17 @@ class CompleteFocusSession
             $attributes['notes'] = $notes;
         }
 
-        $session->update($attributes);
+        DB::transaction(function () use ($session, $attributes, $subject, $topic, $exercisesTotal, $exercisesCorrect): void {
+            $session->update($attributes);
+
+            // As questões da sessão sobem para a tarefa, que é onde o total
+            // acumulado vive (F2). Sem disciplina confirmada não há o que
+            // somar: o vínculo com o tópico não foi confirmado no
+            // encerramento.
+            if ($subject instanceof Subject && $topic instanceof Topic && $exercisesTotal) {
+                $topic->addExercises($exercisesTotal, $exercisesCorrect ?? 0);
+            }
+        });
 
         return $session->refresh();
     }

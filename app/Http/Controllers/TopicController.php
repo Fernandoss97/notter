@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Study\CompleteTopic;
 use App\Http\Requests\Study\StoreTopicRequest;
+use App\Http\Requests\Study\UpdateTopicExercisesRequest;
 use App\Models\StudyPlan;
 use App\Models\Subject;
 use App\Models\Topic;
@@ -41,6 +42,19 @@ class TopicController extends Controller
         abort_unless($topic->subject->studyPlan->user_id === $request->user()->id, 403);
 
         $action->handle($topic);
+
+        return back();
+    }
+
+    /**
+     * Registro manual das questões da tarefa: quem resolveu o PDF sem
+     * cronômetro tem o mesmo lugar para anotar que a sessão alimenta.
+     */
+    public function exercises(UpdateTopicExercisesRequest $request, Topic $topic): RedirectResponse
+    {
+        abort_unless($topic->subject->studyPlan->user_id === $request->user()->id, 403);
+
+        $topic->update($request->validated());
 
         return back();
     }

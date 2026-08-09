@@ -5,6 +5,16 @@ import { Page } from '@/components/page';
 import { PageHeader } from '@/components/page-header';
 import { Panel } from '@/components/panel';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ProgressBar } from '@/components/ui/progress-bar';
@@ -16,9 +26,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { index as planIndex } from '@/routes/plans';
-import { complete as completeTopic, store as storeTopic } from '@/routes/topics';
+import {
+    complete as completeTopic,
+    exercises as updateExercises,
+    store as storeTopic,
+} from '@/routes/topics';
 import { index } from '@/routes/track';
 import type { TrackCycle, TrackPlan, TrackTask } from '@/types/study';
 
@@ -138,6 +153,8 @@ function CyclePanel({ cycle }: { cycle: TrackCycle }) {
                     </div>
                     <div className="mt-0.5 text-xs text-muted-foreground">
                         {cycle.done} de {cycle.total} tarefas
+                        {cycle.exercises > 0 &&
+                            ` · ${cycle.correct}/${cycle.exercises} questões · ${cycle.accuracy}% de acerto`}
                     </div>
                 </div>
                 <div className="w-40">
@@ -214,13 +231,140 @@ function TaskRow({ task }: { task: TrackTask }) {
                 <span className="text-xs text-muted-foreground">
                     {task.subjectName}
                     {task.completedOn && ` · concluída em ${task.completedOn}`}
+                    {task.exercisesTotal > 0 &&
+                        ` · ${task.exercisesCorrect}/${task.exercisesTotal} questões · ${task.accuracy}%`}
                 </span>
             </div>
+
+            <ExercisesDialog task={task} />
 
             {task.reviewStatus && (
                 <ReviewStatusBadge status={task.reviewStatus} />
             )}
         </div>
+    );
+}
+
+/**
+ * O registro de questões da tarefa. Substitui o par inteiro em vez de
+ * somar: é a correção de um número anotado, e quem soma é o encerramento
+ * de uma sessão vinculada à tarefa.
+ */
+function ExercisesDialog({ task }: { task: TrackTask }) {
+    const [open, setOpen] = useState(false);
+    const form = useForm({
+        exercises_total: String(task.exercisesTotal),
+        exercises_correct: String(task.exercisesCorrect),
+    });
+
+    function submit(event: FormEvent) {
+        event.preventDefault();
+
+        form.transform((data) => ({
+            exercises_total: Number(data.exercises_total || 0),
+            exercises_correct: Number(data.exercises_correct || 0),
+        }));
+
+        form.put(updateExercises(task.id).url, {
+            preserveScroll: true,
+            onSuccess: () => setOpen(false),
+        });
+    }
+
+    return (
+        <Dialog
+            open={open}
+            onOpenChange={(next) => {
+                setOpen(next);
+                form.clearErrors();
+                form.setData({
+                    exercises_total: String(task.exercisesTotal),
+                    exercises_correct: String(task.exercisesCorrect),
+                });
+            }}
+        >
+            <DialogTrigger asChild>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Registrar questões de ${task.name}`}
+                >
+                    Questões
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Questões da tarefa</DialogTitle>
+                    <DialogDescription>
+                        {task.name} · o total acumula as sessões encerradas com
+                        questões; salvar aqui substitui o número.
+                    </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={submit} className="flex flex-col gap-4">
+                    <div className="flex gap-4">
+                        <div className="flex flex-1 flex-col gap-2">
+                            <Label htmlFor={`total_${task.id}`}>
+                                Questões feitas
+                            </Label>
+                            <Input
+                                id={`total_${task.id}`}
+                                name="exercises_total"
+                                type="number"
+                                min={0}
+                                value={form.data.exercises_total}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'exercises_total',
+                                        event.target.value,
+                                    )
+                                }
+                            />
+                            {form.errors.exercises_total && (
+                                <p className="text-sm text-destructive">
+                                    {form.errors.exercises_total}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="flex flex-1 flex-col gap-2">
+                            <Label htmlFor={`correct_${task.id}`}>
+                                Acertos
+                            </Label>
+                            <Input
+                                id={`correct_${task.id}`}
+                                name="exercises_correct"
+                                type="number"
+                                min={0}
+                                value={form.data.exercises_correct}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'exercises_correct',
+                                        event.target.value,
+                                    )
+                                }
+                            />
+                            {form.errors.exercises_correct && (
+                                <p className="text-sm text-destructive">
+                                    {form.errors.exercises_correct}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button" variant="secondary">
+                                Cancelar
+                            </Button>
+                        </DialogClose>
+                        <Button type="submit" disabled={form.processing}>
+                            {form.processing && <Spinner />}
+                            Salvar
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
     );
 }
 

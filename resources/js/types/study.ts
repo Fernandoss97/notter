@@ -166,12 +166,19 @@ export type TrackTask = {
     /** Data em que foi concluída, no formato dd/mm/aaaa. */
     completedOn: string | null;
     reviewStatus: ReviewStatus;
+    exercisesTotal: number;
+    exercisesCorrect: number;
+    /** Percentual de acerto, ou null quando não há questão registrada. */
+    accuracy: number | null;
 };
 
 export type TrackCycle = {
     cycle: number;
     done: number;
     total: number;
+    exercises: number;
+    correct: number;
+    accuracy: number | null;
     tasks: TrackTask[];
 };
 

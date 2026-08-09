@@ -27,6 +27,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('plano/subjects', [SubjectController::class, 'store'])->name('subjects.store');
     Route::post('plano/topics', [TopicController::class, 'store'])->name('topics.store');
     Route::post('plano/topics/{topic}/complete', [TopicController::class, 'complete'])->name('topics.complete');
+    Route::put('plano/topics/{topic}/questoes', [TopicController::class, 'exercises'])->name('topics.exercises');
 
     Route::get('trilha', [StudyTrackController::class, 'index'])->name('track.index');
 

@@ -1,6 +1,10 @@
 <?php
 
+use App\Actions\Study\CompleteFocusSession;
+use App\Models\Enums\ActivityType;
+use App\Models\Enums\FocusSessionState;
 use App\Models\StudyPlan;
+use App\Models\StudySession;
 use App\Models\Subject;
 use App\Models\Topic;
 use App\Models\User;
@@ -142,6 +146,140 @@ test('the first task of an empty plan opens cycle zero at position zero', functi
     $topic = Topic::sole();
     expect($topic->cycle)->toBe(0)
         ->and($topic->position)->toBe(0);
+});
+
+test('the track reports questions per task and per cycle', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+    $subject = Subject::factory()->for($plan)->create();
+
+    Topic::factory()->for($subject)->inQueue(0, 0)->create([
+        'exercises_total' => 20,
+        'exercises_correct' => 15,
+    ]);
+    Topic::factory()->for($subject)->inQueue(0, 1)->create([
+        'exercises_total' => 10,
+        'exercises_correct' => 5,
+    ]);
+
+    $this->actingAs($user)
+        ->get('/trilha')
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->where('cycles.0.tasks.0.exercisesTotal', 20)
+            ->where('cycles.0.tasks.0.exercisesCorrect', 15)
+            ->where('cycles.0.tasks.0.accuracy', 75)
+            ->where('cycles.0.exercises', 30)
+            ->where('cycles.0.correct', 20)
+            ->where('cycles.0.accuracy', 67));
+});
+
+test('a task without questions reports no accuracy', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+    Topic::factory()->for(Subject::factory()->for($plan))->create();
+
+    $this->actingAs($user)
+        ->get('/trilha')
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->where('cycles.0.tasks.0.exercisesTotal', 0)
+            ->where('cycles.0.tasks.0.accuracy', null)
+            ->where('cycles.0.accuracy', null));
+});
+
+test('questions can be recorded by hand, replacing what was there', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+    $topic = Topic::factory()->for(Subject::factory()->for($plan))->create([
+        'exercises_total' => 10,
+        'exercises_correct' => 8,
+    ]);
+
+    $this->actingAs($user)
+        ->from(route('track.index'))
+        ->put("/plano/topics/{$topic->id}/questoes", [
+            'exercises_total' => 30,
+            'exercises_correct' => 24,
+        ])
+        ->assertRedirect(route('track.index'));
+
+    $topic->refresh();
+    expect($topic->exercises_total)->toBe(30)
+        ->and($topic->exercises_correct)->toBe(24)
+        ->and($topic->accuracyPercent())->toBe(80);
+});
+
+test('recording more hits than questions is rejected', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+    $topic = Topic::factory()->for(Subject::factory()->for($plan))->create();
+
+    $this->actingAs($user)
+        ->put("/plano/topics/{$topic->id}/questoes", [
+            'exercises_total' => 10,
+            'exercises_correct' => 11,
+        ])
+        ->assertInvalid(['exercises_correct']);
+
+    expect($topic->refresh()->exercises_total)->toBe(0);
+});
+
+test('a session adds to the hand-written total, and a later correction replaces it', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+    $subject = Subject::factory()->for($plan)->create();
+    $topic = Topic::factory()->for($subject)->create();
+    $session = StudySession::factory()->for($user)->for($plan)->create([
+        'state' => FocusSessionState::Running,
+        'resumed_at' => now(),
+    ]);
+
+    // O par registrado na mão é o número oficial da tarefa.
+    $this->actingAs($user)
+        ->from(route('track.index'))
+        ->put("/plano/topics/{$topic->id}/questoes", [
+            'exercises_total' => 20,
+            'exercises_correct' => 15,
+        ]);
+
+    // A sessão encerrada com questões soma — são questões novas, de outro
+    // momento de estudo, não a mesma leva recontada.
+    (new CompleteFocusSession)->handle(
+        $session,
+        $subject,
+        $topic,
+        ActivityType::Exercises,
+        exercisesTotal: 10,
+        exercisesCorrect: 9,
+    );
+
+    expect($topic->refresh()->exercises_total)->toBe(30)
+        ->and($topic->exercises_correct)->toBe(24);
+
+    // E o registro manual continua sendo a última palavra: quem viu o total
+    // acumulado no diálogo e o corrigiu substitui o par inteiro.
+    $this->actingAs($user)
+        ->from(route('track.index'))
+        ->put("/plano/topics/{$topic->id}/questoes", [
+            'exercises_total' => 25,
+            'exercises_correct' => 20,
+        ]);
+
+    expect($topic->refresh()->exercises_total)->toBe(25)
+        ->and($topic->exercises_correct)->toBe(20);
+});
+
+test('recording questions requires ownership', function () {
+    $user = User::factory()->create();
+    $foreignTopic = Topic::factory()->create();
+
+    $this->actingAs($user)
+        ->put("/plano/topics/{$foreignTopic->id}/questoes", [
+            'exercises_total' => 10,
+            'exercises_correct' => 5,
+        ])
+        ->assertForbidden();
 });
 
 test('a task can be filed into an explicit cycle', function () {
