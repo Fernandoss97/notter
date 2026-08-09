@@ -51,6 +51,52 @@ test('the progress screen shows the week, the streak and the last seven days', f
         ->assertNoJavaScriptErrors();
 });
 
+test('the progress screen counts down to the exam and compares the paces', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create([
+        'exam_date' => today()->addDays(70)->toDateString(),
+    ]);
+    $subject = Subject::factory()->for($plan)->create();
+    Topic::factory()->for($subject)->count(30)->create();
+
+    $page = visit('/login')
+        ->fill('email', $user->email)
+        ->fill('password', 'password')
+        ->click('Log in')
+        ->assertPathIs('/foco')
+        ->assertNoJavaScriptErrors();
+
+    $page->hover('[data-slot="sidebar"]')
+        ->click('Progresso')
+        ->assertPathIs('/dashboard')
+        ->assertSee('Prazo e ritmo')
+        ->assertSee('70 dias')
+        ->assertSee('30 de 30')
+        // 30 tarefas em 10 semanas, contra um ritmo parado.
+        ->assertSee('3 tarefas/semana')
+        ->assertSee('Abaixo do ritmo')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a plan without an exam date asks for one instead of inventing a pace', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create(['exam_date' => null]);
+    Topic::factory()->for(Subject::factory()->for($plan))->create();
+
+    $page = visit('/login')
+        ->fill('email', $user->email)
+        ->fill('password', 'password')
+        ->click('Log in')
+        ->assertPathIs('/foco')
+        ->assertNoJavaScriptErrors();
+
+    $page->hover('[data-slot="sidebar"]')
+        ->click('Progresso')
+        ->assertSee('Sem data de prova')
+        ->assertDontSee('Ritmo necessário')
+        ->assertNoJavaScriptErrors();
+});
+
 test('the evolution reports the accuracy of each subject and the totals', function () {
     $user = User::factory()->create();
     $plan = StudyPlan::factory()->for($user)->active()->create();

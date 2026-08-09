@@ -38,6 +38,9 @@ class StudyPlanController extends Controller
                 'name' => $activePlan->name,
                 'type' => $activePlan->type->value,
                 'weeklyGoalMinutes' => $activePlan->weekly_goal_minutes,
+                // No formato do input date, não no de leitura: este valor
+                // volta para o formulário de edição.
+                'examDate' => $activePlan->exam_date?->toDateString(),
                 'subjects' => $activePlan->subjects->map($this->subjectProp(...))->all(),
             ] : null,
         ]);

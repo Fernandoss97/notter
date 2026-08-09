@@ -55,6 +55,7 @@ const activePlan: ActiveStudyPlan = {
     name: 'Concurso XYZ',
     type: 'contest',
     weeklyGoalMinutes: 1200,
+    examDate: null,
     subjects: [],
 };
 
@@ -203,6 +204,23 @@ describe('PlanIndex', () => {
             'data-state',
             'on',
         );
+    });
+
+    it('announces the exam date in the plan subtitle, in reading format', () => {
+        render(
+            <PlanIndex
+                plans={[]}
+                activePlan={{ ...activePlan, examDate: '2027-03-14' }}
+            />,
+        );
+
+        expect(screen.getByText(/prova em 14\/03\/2027/)).toBeInTheDocument();
+    });
+
+    it('says nothing about an exam when the plan has no date', () => {
+        render(<PlanIndex plans={[]} activePlan={activePlan} />);
+
+        expect(screen.queryByText(/prova em/)).not.toBeInTheDocument();
     });
 
     it('names the cycle of each topic only when the track has more than one', () => {

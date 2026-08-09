@@ -3,6 +3,7 @@ import { Page } from '@/components/page';
 import { Panel } from '@/components/panel';
 import { StatTile } from '@/components/stat-tile';
 import { SubjectEvolutionTable } from '@/components/subject-evolution';
+import { TrackPacePanel } from '@/components/track-pace';
 import { Button } from '@/components/ui/button';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { WeeklyBars } from '@/components/weekly-bars';
@@ -16,6 +17,7 @@ import type {
     DashboardStats,
     RecentDay,
     SubjectEvolution,
+    TrackPace,
 } from '@/types/study';
 
 interface DashboardProps {
@@ -23,6 +25,7 @@ interface DashboardProps {
     stats: DashboardStats;
     recentDays: RecentDay[];
     evolution: SubjectEvolution | null;
+    pace: TrackPace | null;
 }
 
 /**
@@ -36,6 +39,7 @@ export default function Dashboard({
     stats,
     recentDays,
     evolution,
+    pace,
 }: DashboardProps) {
     const dailyGoal =
         stats.weekGoalMinutes > 0 ? Math.round(stats.weekGoalMinutes / 7) : 0;
@@ -122,6 +126,8 @@ export default function Dashboard({
                                 hint={`maior sequência: ${stats.longestStreak}`}
                             />
                         </div>
+
+                        {pace && <TrackPacePanel pace={pace} />}
 
                         <Panel title="Últimos 7 dias">
                             <WeeklyBars

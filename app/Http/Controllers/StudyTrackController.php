@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Actions\Study\Exceptions\InvalidTrackImportException;
 use App\Actions\Study\ImportStudyTrack;
 use App\Actions\Study\ParseTrackImport;
+use App\Concerns\CalculatesPercentage;
 use App\Http\Requests\Study\ImportStudyTrackRequest;
 use App\Models\StudyPlan;
 use App\Models\Topic;
@@ -16,6 +17,8 @@ use Inertia\Response;
 
 class StudyTrackController extends Controller
 {
+    use CalculatesPercentage;
+
     /**
      * A trilha: as tarefas do plano numa fila só, agrupadas em ciclos.
      *
@@ -139,7 +142,7 @@ class StudyTrackController extends Controller
                     'total' => $tasks->count(),
                     'exercises' => $exercises,
                     'correct' => $correct,
-                    'accuracy' => $exercises > 0 ? (int) round($correct / $exercises * 100) : null,
+                    'accuracy' => $this->percent($correct, $exercises),
                     'tasks' => $tasks->all(),
                 ];
             })

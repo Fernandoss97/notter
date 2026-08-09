@@ -104,6 +104,8 @@ export type ActiveStudyPlan = {
     name: string;
     type: StudyPlanType;
     weeklyGoalMinutes: number;
+    /** Data da prova no formato do input (aaaa-mm-dd), ou null. */
+    examDate: string | null;
     subjects: PlanSubject[];
 };
 
@@ -111,6 +113,21 @@ export type DashboardPlan = {
     id: number;
     name: string;
     weeklyGoalMinutes: number;
+};
+
+export type TrackPace = {
+    tasksRemaining: number;
+    tasksTotal: number;
+    examOn: string | null;
+    /** Negativo depois da prova; null quando não há data. */
+    daysUntilExam: number | null;
+    /** Tarefas por semana necessárias até a prova. */
+    requiredPerWeek: number | null;
+    /** Tarefas por semana concluídas nas últimas quatro semanas. */
+    currentPerWeek: number;
+    /** Data prevista de término no ritmo atual. */
+    projectedOn: string | null;
+    onTrack: boolean | null;
 };
 
 export type DashboardStats = {
