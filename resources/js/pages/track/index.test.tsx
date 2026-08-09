@@ -290,6 +290,33 @@ describe('TrackIndex', () => {
         );
     });
 
+    it('imports a paste from the spreadsheet', async () => {
+        render(<TrackIndex plan={plan} cycles={[cycle()]} />);
+
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Importar trilha' }),
+        );
+
+        await userEvent.type(
+            screen.getByLabelText('Tarefas'),
+            'Banco de Dados\tEstudo da Aula 00',
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'Importar' }));
+
+        expect(formPost).toHaveBeenCalledWith(
+            expect.stringContaining('/trilha/importar'),
+            expect.objectContaining({ preserveScroll: true }),
+        );
+    });
+
+    it('offers no import when there is no plan to import into', () => {
+        render(<TrackIndex plan={null} cycles={[]} />);
+
+        expect(
+            screen.queryByRole('button', { name: 'Importar trilha' }),
+        ).not.toBeInTheDocument();
+    });
+
     it('points to the plan screen when there is no active plan', () => {
         render(<TrackIndex plan={null} cycles={[]} />);
 

@@ -34,7 +34,8 @@ import {
     exercises as updateExercises,
     store as storeTopic,
 } from '@/routes/topics';
-import { index } from '@/routes/track';
+// `import` é palavra reservada, então o Wayfinder gera `importMethod`.
+import { importMethod as importTrack, index } from '@/routes/track';
 import type { TrackCycle, TrackPlan, TrackTask } from '@/types/study';
 
 interface TrackIndexProps {
@@ -59,9 +60,12 @@ export default function TrackIndex({ plan, cycles }: TrackIndexProps) {
                             title="Trilha"
                             subtitle={`${plan.name} · ${done} de ${total} tarefas concluídas`}
                             actions={
-                                <Button variant="outline" asChild>
-                                    <Link href={planIndex()}>Ver plano</Link>
-                                </Button>
+                                <>
+                                    <ImportDialog />
+                                    <Button variant="outline" asChild>
+                                        <Link href={planIndex()}>Ver plano</Link>
+                                    </Button>
+                                </>
                             }
                         />
 
@@ -103,6 +107,88 @@ export default function TrackIndex({ plan, cycles }: TrackIndexProps) {
 TrackIndex.layout = {
     breadcrumbs: [{ title: 'Trilha', href: index() }],
 };
+
+/**
+ * Importação por texto colado, e não por upload de arquivo: quem mantém a
+ * trilha numa planilha só precisa selecionar as linhas e dar Ctrl+C, sem
+ * exportar nada — e o app não ganha uma dependência para ler .xlsx.
+ */
+function ImportDialog() {
+    const [open, setOpen] = useState(false);
+    const form = useForm({ content: '' });
+
+    function submit(event: FormEvent) {
+        event.preventDefault();
+
+        form.post(importTrack().url, {
+            preserveScroll: true,
+            onSuccess: () => {
+                form.reset();
+                setOpen(false);
+            },
+        });
+    }
+
+    return (
+        <Dialog
+            open={open}
+            onOpenChange={(next) => {
+                setOpen(next);
+                form.clearErrors();
+            }}
+        >
+            <DialogTrigger asChild>
+                <Button variant="outline">Importar trilha</Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Importar trilha da planilha</DialogTitle>
+                    <DialogDescription>
+                        Cole as linhas direto da planilha, com as colunas
+                        trilha, tarefa, disciplina e título — ou só disciplina
+                        e título. Disciplinas novas são criadas, e tarefas que
+                        já estão na trilha são ignoradas.
+                    </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={submit} className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-2">
+                        <Label htmlFor="import_content">Tarefas</Label>
+                        <textarea
+                            id="import_content"
+                            name="content"
+                            rows={10}
+                            value={form.data.content}
+                            onChange={(event) =>
+                                form.setData('content', event.target.value)
+                            }
+                            placeholder={
+                                '0\t1\tBanco de Dados\tEstudo da Aula 00\n0\t2\tPortuguês\tEstudo da Aula 00'
+                            }
+                            className="w-full rounded-md border border-input bg-transparent px-3 py-2 font-mono text-xs shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                        />
+                        {form.errors.content && (
+                            <p className="text-sm text-destructive">
+                                {form.errors.content}
+                            </p>
+                        )}
+                    </div>
+
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button" variant="secondary">
+                                Cancelar
+                            </Button>
+                        </DialogClose>
+                        <Button type="submit" disabled={form.processing}>
+                            {form.processing && <Spinner />}
+                            Importar
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 function NoPlanPanel() {
     return (

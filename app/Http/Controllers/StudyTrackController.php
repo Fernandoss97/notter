@@ -2,9 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Study\Exceptions\InvalidTrackImportException;
+use App\Actions\Study\ImportStudyTrack;
+use App\Actions\Study\ParseTrackImport;
+use App\Http\Requests\Study\ImportStudyTrackRequest;
 use App\Models\StudyPlan;
 use App\Models\Topic;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -33,6 +39,58 @@ class StudyTrackController extends Controller
             ] : null,
             'cycles' => $plan instanceof StudyPlan ? $this->cycles($plan) : [],
         ]);
+    }
+
+    /**
+     * Importa uma trilha colada da planilha. O parser sabe apontar a linha
+     * do erro, então a falha volta como erro de validação do próprio campo
+     * — é lá que o usuário está olhando.
+     */
+    public function import(
+        ImportStudyTrackRequest $request,
+        ParseTrackImport $parse,
+        ImportStudyTrack $import,
+    ): RedirectResponse {
+        $plan = $request->user()->activeStudyPlan()->first();
+
+        if (! $plan instanceof StudyPlan) {
+            throw ValidationException::withMessages([
+                'content' => __('Ative um plano de estudos antes de importar uma trilha.'),
+            ]);
+        }
+
+        try {
+            $rows = $parse->handle($request->string('content')->toString());
+        } catch (InvalidTrackImportException $exception) {
+            throw ValidationException::withMessages(['content' => $exception->getMessage()]);
+        }
+
+        $summary = $import->handle($plan, $rows);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $this->importMessage($summary),
+        ]);
+
+        return to_route('track.index');
+    }
+
+    /**
+     * @param  array{imported: int, skipped: int, subjectsCreated: int}  $summary
+     */
+    private function importMessage(array $summary): string
+    {
+        $parts = [trans_choice('{0}Nenhuma tarefa nova|{1}1 tarefa importada|[2,*]:count tarefas importadas', $summary['imported'], ['count' => $summary['imported']])];
+
+        if ($summary['subjectsCreated'] > 0) {
+            $parts[] = trans_choice('{1}1 disciplina criada|[2,*]:count disciplinas criadas', $summary['subjectsCreated'], ['count' => $summary['subjectsCreated']]);
+        }
+
+        if ($summary['skipped'] > 0) {
+            $parts[] = trans_choice('{1}1 já estava na trilha|[2,*]:count já estavam na trilha', $summary['skipped'], ['count' => $summary['skipped']]);
+        }
+
+        return implode(' · ', $parts).'.';
     }
 
     /**

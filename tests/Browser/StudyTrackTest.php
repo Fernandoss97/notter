@@ -65,6 +65,40 @@ test('a user can record the questions of a task by hand', function () {
         ->assertNoJavaScriptErrors();
 });
 
+test('a user can import a track pasted from the spreadsheet', function () {
+    $user = User::factory()->create();
+    StudyPlan::factory()->for($user)->active()->create();
+
+    $page = visit('/login')
+        ->fill('email', $user->email)
+        ->fill('password', 'password')
+        ->click('Log in')
+        ->assertPathIs('/foco')
+        ->assertNoJavaScriptErrors();
+
+    $page->hover('[data-slot="sidebar"]')
+        ->click('Trilha')
+        ->assertPathIs('/trilha')
+        ->assertNoJavaScriptErrors();
+
+    $page->click('Importar trilha')
+        ->fill('content', implode("\n", [
+            "0\t1\tBanco de Dados\tEstudo da Aula 00",
+            "0\t2\tPortuguês\tEstudo da Aula 00",
+            "1\t3\tBanco de Dados\tEstudo da Aula 01",
+        ]))
+        ->click('[data-slot="dialog-content"] button:text-is("Importar")')
+        ->assertSee('3 tarefas importadas')
+        ->assertSee('2 disciplinas criadas')
+        ->assertNoJavaScriptErrors();
+
+    $page->assertSee('Ciclo 1')
+        ->assertSee('Ciclo 2')
+        ->assertSee('Estudo da Aula 00')
+        ->assertSee('Estudo da Aula 01')
+        ->assertNoJavaScriptErrors();
+});
+
 test('the track lists the queue across subjects, cycle by cycle', function () {
     $user = User::factory()->create();
     $plan = StudyPlan::factory()->for($user)->active()->create();
