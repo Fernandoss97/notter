@@ -51,12 +51,14 @@ type PlanFormData = {
     name: string;
     type: StudyPlanType;
     weekly_goal_minutes: number;
+    exam_date: string;
 };
 
 const EMPTY_PLAN: PlanFormData = {
     name: '',
     type: 'free',
     weekly_goal_minutes: 20 * 60,
+    exam_date: '',
 };
 
 /**
@@ -153,6 +155,27 @@ function PlanFields({
                 {form.errors.weekly_goal_minutes && (
                     <p className="text-sm text-destructive">
                         {form.errors.weekly_goal_minutes}
+                    </p>
+                )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+                <Label htmlFor={`${idPrefix}_exam_date`}>
+                    Data da prova (opcional)
+                </Label>
+                <Input
+                    id={`${idPrefix}_exam_date`}
+                    name="exam_date"
+                    type="date"
+                    className="w-fit"
+                    value={form.data.exam_date}
+                    onChange={(event) =>
+                        form.setData('exam_date', event.target.value)
+                    }
+                />
+                {form.errors.exam_date && (
+                    <p className="text-sm text-destructive">
+                        {form.errors.exam_date}
                     </p>
                 )}
             </div>
@@ -320,7 +343,15 @@ function ActivePlanView({
             <div aria-busy={busy} className={switchingClassName}>
                 <PageHeader
                     title={plan.name}
-                    subtitle={`${plan.type === 'contest' ? 'Concurso' : 'Estudo livre'} · ${plan.subjects.length} disciplinas · ${topicsTotal} tópicos`}
+                    subtitle={[
+                        plan.type === 'contest' ? 'Concurso' : 'Estudo livre',
+                        `${plan.subjects.length} disciplinas`,
+                        `${topicsTotal} tópicos`,
+                        plan.examDate &&
+                            `prova em ${formatExamDate(plan.examDate)}`,
+                    ]
+                        .filter(Boolean)
+                        .join(' · ')}
                     actions={
                         <>
                             <EditPlanDialog plan={plan} />
@@ -400,6 +431,7 @@ function EditPlanDialog({ plan }: { plan: ActiveStudyPlan }) {
         name: plan.name,
         type: plan.type,
         weekly_goal_minutes: plan.weeklyGoalMinutes,
+        exam_date: plan.examDate ?? '',
     });
 
     function submit(event: FormEvent) {
@@ -421,6 +453,7 @@ function EditPlanDialog({ plan }: { plan: ActiveStudyPlan }) {
                     name: plan.name,
                     type: plan.type,
                     weekly_goal_minutes: plan.weeklyGoalMinutes,
+                    exam_date: plan.examDate ?? '',
                 });
             }}
         >
@@ -522,6 +555,15 @@ function AddSubjectPanel({
             </form>
         </Panel>
     );
+}
+
+/**
+ * A data da prova viaja no formato do input (aaaa-mm-dd), que é o que o
+ * campo devolve; para leitura ela vira dd/mm/aaaa aqui mesmo, sem passar
+ * pelo servidor só para mudar de formato.
+ */
+function formatExamDate(date: string): string {
+    return date.split('-').reverse().join('/');
 }
 
 /**

@@ -19,10 +19,11 @@ use Illuminate\Support\Carbon;
  * @property StudyPlanType $type
  * @property bool $is_active
  * @property int $weekly_goal_minutes
+ * @property Carbon|null $exam_date
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'type', 'is_active', 'weekly_goal_minutes'])]
+#[Fillable(['name', 'type', 'is_active', 'weekly_goal_minutes', 'exam_date'])]
 class StudyPlan extends Model
 {
     /** @use HasFactory<StudyPlanFactory> */
@@ -42,7 +43,21 @@ class StudyPlan extends Model
             'type' => StudyPlanType::class,
             'is_active' => 'boolean',
             'weekly_goal_minutes' => 'integer',
+            'exam_date' => 'date',
         ];
+    }
+
+    /**
+     * Dias até a prova. Negativo depois dela, `null` sem data marcada — o
+     * chamador precisa distinguir "a prova já foi" de "não há prova".
+     */
+    public function daysUntilExam(): ?int
+    {
+        if ($this->exam_date === null) {
+            return null;
+        }
+
+        return (int) round(today()->diffInDays($this->exam_date->startOfDay(), absolute: false));
     }
 
     /**

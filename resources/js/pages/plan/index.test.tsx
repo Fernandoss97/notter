@@ -55,6 +55,7 @@ const activePlan: ActiveStudyPlan = {
     name: 'Concurso XYZ',
     type: 'contest',
     weeklyGoalMinutes: 1200,
+    examDate: null,
     subjects: [],
 };
 

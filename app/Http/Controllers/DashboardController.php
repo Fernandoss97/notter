@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Study\ResolveCurrentFocusSession;
+use App\Concerns\CalculatesPercentage;
 use App\Concerns\SummarizesStudyTime;
+use App\Concerns\SummarizesTrackPace;
 use App\Models\Enums\FocusSessionState;
 use App\Models\StudyPlan;
 use App\Models\Subject;
@@ -16,7 +18,9 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
+    use CalculatesPercentage;
     use SummarizesStudyTime;
+    use SummarizesTrackPace;
 
     /**
      * Dias mostrados no gráfico de barras — uma semana móvel, que é o
@@ -71,6 +75,7 @@ class DashboardController extends Controller
                 'id' => $plan->id,
                 'name' => $plan->name,
                 'weeklyGoalMinutes' => $plan->weekly_goal_minutes,
+                'examOn' => $plan->exam_date?->format('d/m/Y'),
             ] : null,
             'stats' => [
                 'weekMinutes' => $this->minutesStudied($user, $weekStart, now()->endOfWeek(), $excludeBreaks, $activeSession),
@@ -83,6 +88,7 @@ class DashboardController extends Controller
             ],
             'recentDays' => $this->recentDays($user, $excludeBreaks),
             'evolution' => $plan instanceof StudyPlan ? $this->evolution($plan) : null,
+            'pace' => $plan instanceof StudyPlan ? $this->trackPace($plan) : null,
         ]);
     }
 
@@ -132,16 +138,6 @@ class DashboardController extends Controller
                 'accuracy' => $this->percent($correct, $exercises),
             ],
         ];
-    }
-
-    /**
-     * Percentual arredondado, ou `null` quando não há denominador —
-     * disciplina sem questão resolvida não tem desempenho 0%, tem
-     * desempenho nenhum.
-     */
-    private function percent(int $part, int $whole): ?int
-    {
-        return $whole > 0 ? (int) round($part / $whole * 100) : null;
     }
 
     /**
