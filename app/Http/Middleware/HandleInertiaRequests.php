@@ -48,6 +48,10 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            // A barra de sessão é renderizada no servidor: sem saber daqui
+            // que o tempo está escondido, o HTML sairia com o relógio e ele
+            // piscaria a cada visita até a hidratação.
+            'hiddenTime' => $request->cookie('hidden_time') === 'true',
             'activeSession' => $this->activeSessionProp($request),
         ];
     }

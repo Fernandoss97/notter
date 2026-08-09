@@ -236,6 +236,29 @@ test('skipping a break returns to focus without waiting for it to end', function
         ->and($session->planned_seconds)->toBe(50 * 60);
 });
 
+test('the server knows the clock is hidden before it renders anything', function () {
+    $user = User::factory()->create();
+    StudyPlan::factory()->for($user)->active()->create();
+
+    // Sem isso a barra de sessão sairia do servidor com o relógio, que
+    // apareceria por um instante a cada visita até a hidratação.
+    // Sem criptografia porque quem escreve o cookie é o cliente — ele está
+    // na lista de exceções de `encryptCookies`, como o da sidebar.
+    $this->actingAs($user)
+        ->withUnencryptedCookie('hidden_time', 'true')
+        ->get('/foco')
+        ->assertInertia(fn ($page) => $page->where('hiddenTime', true));
+});
+
+test('the clock shows by default, with no cookie to say otherwise', function () {
+    $user = User::factory()->create();
+    StudyPlan::factory()->for($user)->active()->create();
+
+    $this->actingAs($user)
+        ->get('/foco')
+        ->assertInertia(fn ($page) => $page->where('hiddenTime', false));
+});
+
 test('extending the focus phase buys minutes without closing the cycle', function () {
     $user = User::factory()->create();
     StudyPlan::factory()->for($user)->active()->create();

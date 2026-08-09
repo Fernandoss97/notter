@@ -4,6 +4,7 @@ import { Dot } from '@/components/dot';
 import { Button } from '@/components/ui/button';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { useCurrentUrl } from '@/hooks/use-current-url';
+import { useHiddenTime } from '@/hooks/use-hidden-time';
 import { useLiveElapsedSeconds } from '@/hooks/use-live-elapsed-seconds';
 import { usePhaseAlert } from '@/hooks/use-phase-alert';
 import { usePhaseEnd } from '@/hooks/use-phase-end';
@@ -27,6 +28,9 @@ export function SessionBar() {
     // todas elas.
     const finished = usePhaseEnd(activeSession, elapsedSeconds);
     const alert = usePhaseAlert(activeSession?.state);
+    // Esconder o tempo no cronômetro e deixá-lo aqui não esconderia nada:
+    // a barra persegue o usuário por todas as telas.
+    const [hiddenTime] = useHiddenTime();
 
     // O título da aba é o canal que atravessa a aba em segundo plano sem
     // depender de permissão nenhuma.
@@ -119,13 +123,15 @@ export function SessionBar() {
                                   ? 'Intervalo'
                                   : 'Em foco'}
                     </span>
-                    <span
-                        role="timer"
-                        aria-label={`Tempo restante: ${formatClock(remainingSeconds)}`}
-                        className="font-mono text-2xl font-semibold text-foreground tabular-nums"
-                    >
-                        {formatClock(remainingSeconds)}
-                    </span>
+                    {!hiddenTime && (
+                        <span
+                            role="timer"
+                            aria-label={`Tempo restante: ${formatClock(remainingSeconds)}`}
+                            className="font-mono text-2xl font-semibold text-foreground tabular-nums"
+                        >
+                            {formatClock(remainingSeconds)}
+                        </span>
+                    )}
                     <span className="text-base text-fg-2">
                         {activeSession.subject} · {activeSession.topic}
                     </span>

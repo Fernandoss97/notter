@@ -25,6 +25,12 @@ export interface FocusTimerProps {
     reviewStatus?: ReviewStatus;
     zen?: boolean;
     /**
+     * Esconde o relógio e o decorrido, deixando só o andamento. O
+     * progresso e os pontos de ciclo ficam: eles mostram andamento, não
+     * tempo.
+     */
+    hideTime?: boolean;
+    /**
      * A fase que acabou de terminar, enquanto o aviso estiver de pé. Vem
      * do store de `lib/phase-alert`, não da sessão: quando o aviso
      * aparece a sessão já está na fase seguinte.
@@ -53,6 +59,7 @@ export function FocusTimer({
     topicLabel,
     reviewStatus,
     zen = false,
+    hideTime = false,
     alertPhase = null,
     onToggle,
     onAdvance,
@@ -124,16 +131,27 @@ export function FocusTimer({
             <span
                 // O rótulo é anunciado, o cronômetro não: um aria-live no
                 // contador falaria a cada segundo.
+                //
+                // Com o tempo escondido é este rótulo que ocupa o lugar do
+                // relógio, em vez de um segundo elemento repetindo o mesmo
+                // texto em outro tamanho.
                 aria-live="polite"
                 className={cn(
-                    'flex items-center gap-2 text-xs font-bold tracking-wide uppercase',
+                    'flex items-center font-bold tracking-wide uppercase',
                     'transition-colors duration-base ease-out',
                     calm ? 'text-pausa-600' : 'text-focus-500',
+                    // No zen o rótulo assume o lugar de um relógio de
+                    // 128px: menor que isto e a tela cheia fica sem
+                    // ponto focal nenhum.
+                    hideTime
+                        ? cn('gap-3 py-6', zen ? 'text-num-md' : 'text-xl')
+                        : 'gap-2 text-xs',
                 )}
             >
                 <span
                     className={cn(
-                        'size-1.5 rounded-full transition-colors duration-base ease-out',
+                        'rounded-full transition-colors duration-base ease-out',
+                        hideTime ? 'size-2.5' : 'size-1.5',
                         calm ? 'bg-pausa-500' : 'bg-focus-500',
                         alerting && 'animate-pulse',
                     )}
@@ -141,21 +159,28 @@ export function FocusTimer({
                 {state}
             </span>
 
-            <span
-                role="timer"
-                aria-label={`Tempo restante: ${formatClock(remainingSeconds)}`}
-                className={cn(
-                    'font-mono text-foreground tabular-nums',
-                    zen ? 'text-timer-lg' : 'text-timer',
-                )}
-            >
-                {formatClock(remainingSeconds)}
-            </span>
+            {/* O `role="timer"` sai junto com o número: mantê-lo faria o
+                leitor de tela narrar exatamente o tempo que a pessoa pediu
+                para não ver. */}
+            {!hideTime && (
+                <>
+                    <span
+                        role="timer"
+                        aria-label={`Tempo restante: ${formatClock(remainingSeconds)}`}
+                        className={cn(
+                            'font-mono text-foreground tabular-nums',
+                            zen ? 'text-timer-lg' : 'text-timer',
+                        )}
+                    >
+                        {formatClock(remainingSeconds)}
+                    </span>
 
-            <span className="text-xs text-muted-foreground">
-                {formatClock(elapsedSeconds)} de{' '}
-                {Math.round(plannedSeconds / 60)} min
-            </span>
+                    <span className="text-xs text-muted-foreground">
+                        {formatClock(elapsedSeconds)} de{' '}
+                        {Math.round(plannedSeconds / 60)} min
+                    </span>
+                </>
+            )}
 
             <div className="w-full max-w-[320px]">
                 <ProgressBar

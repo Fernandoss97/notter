@@ -14,6 +14,8 @@ declare module '@inertiajs/core' {
             name: string;
             auth: Auth;
             sidebarOpen: boolean;
+            /** Esconder o tempo restante — do cookie, para o primeiro paint. */
+            hiddenTime: boolean;
             activeSession: ActiveFocusSession | null;
             [key: string]: unknown;
         };

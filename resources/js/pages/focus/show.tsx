@@ -30,6 +30,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { ZenThemePicker } from '@/components/zen-theme-picker';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { useFullscreen } from '@/hooks/use-fullscreen';
+import { useHiddenTime } from '@/hooks/use-hidden-time';
 import { useHotkeys } from '@/hooks/use-hotkeys';
 import { useLiveElapsedSeconds } from '@/hooks/use-live-elapsed-seconds';
 import { usePhaseAlert } from '@/hooks/use-phase-alert';
@@ -368,6 +369,7 @@ function ActiveSessionView({
     const finished = elapsedSeconds >= session.plannedSeconds;
     const alert = usePhaseAlert(session.state);
     const { zenTheme, setZenTheme } = useZenTheme();
+    const [hiddenTime, setHiddenTime] = useHiddenTime();
 
     // A tela não pode apagar no meio do ciclo — ler ou resolver questão
     // no papel não gera atividade nenhuma para o sistema.
@@ -429,14 +431,18 @@ function ActiveSessionView({
         session.plannedSeconds - elapsedSeconds,
     );
 
+    const titleState = paused
+        ? 'Pausado'
+        : onBreak
+          ? 'Intervalo'
+          : (currentSubject?.name ?? 'Foco');
+
+    // Sem o relógio no título: a aba fica no canto do olho o tempo todo, e
+    // é por ela que o tempo escondido voltaria.
     useDocumentTitle(
-        `${formatClock(remainingSeconds)} · ${
-            paused
-                ? 'Pausado'
-                : onBreak
-                  ? 'Intervalo'
-                  : (currentSubject?.name ?? 'Foco')
-        }`,
+        hiddenTime
+            ? titleState
+            : `${formatClock(remainingSeconds)} · ${titleState}`,
     );
 
     useHotkeys({
@@ -444,6 +450,7 @@ function ActiveSessionView({
         f: () => setZen((on) => !on),
         escape: () => setZen(false),
         e: () => setCompleteOpen(true),
+        t: () => setHiddenTime(!hiddenTime),
     });
 
     const timer = (
@@ -458,12 +465,19 @@ function ActiveSessionView({
             topicLabel={currentTopic?.name ?? null}
             reviewStatus={currentTopic?.reviewStatus}
             zen={zen}
+            hideTime={hiddenTime}
             alertPhase={alert?.phase ?? null}
             onToggle={toggle}
             onAdvance={() => advance()}
             onSkipBreak={() => advance(true)}
             onExtend={extend}
         />
+    );
+
+    const hideTimeButton = (
+        <Button variant="ghost" onClick={() => setHiddenTime(!hiddenTime)}>
+            {hiddenTime ? 'Mostrar tempo' : 'Ocultar tempo'}
+        </Button>
     );
 
     if (zen) {
@@ -484,11 +498,15 @@ function ActiveSessionView({
                         onValueChange={setZenTheme}
                     />
                     <p className="text-xs text-muted-foreground">
-                        Espaço pausa · E encerra · Esc sai do modo zen
+                        Espaço pausa · T oculta o tempo · E encerra · Esc sai do
+                        modo zen
                     </p>
-                    <Button variant="ghost" onClick={() => setZen(false)}>
-                        Sair do modo zen (Esc)
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        {hideTimeButton}
+                        <Button variant="ghost" onClick={() => setZen(false)}>
+                            Sair do modo zen (Esc)
+                        </Button>
+                    </div>
                 </div>
             </div>
         );
@@ -503,6 +521,7 @@ function ActiveSessionView({
                         <Button variant="ghost" onClick={() => setZen(true)}>
                             Modo zen
                         </Button>
+                        {hideTimeButton}
                         <CompleteSessionDialog
                             plan={plan}
                             session={session}
@@ -512,7 +531,8 @@ function ActiveSessionView({
                         />
                     </div>
                     <p className="text-center text-xs text-muted-foreground">
-                        Espaço pausa · F entra no modo zen · E encerra
+                        Espaço pausa · F entra no modo zen · T oculta o tempo ·
+                        E encerra
                     </p>
                     <BlockedNotificationsHint />
                 </div>

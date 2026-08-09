@@ -1,6 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { hiddenTimePreference } from '@/hooks/use-hidden-time';
 import type {
     DueReview,
     FocusSession,
@@ -23,6 +24,7 @@ vi.mock('@inertiajs/react', async () => {
             <a href="#">{children}</a>
         ),
         router: { post },
+        usePage: () => ({ props: {} }),
         useForm: (initial: Record<string, unknown>) => {
             const [data, setState] = useState(initial);
 
@@ -122,6 +124,9 @@ describe('FocusShow', () => {
     beforeEach(() => {
         post.mockReset();
         announcePhaseEnd.mockReset();
+        // Preferência de módulo: sem zerar, a escolha de um teste
+        // atravessaria para o próximo.
+        hiddenTimePreference.set(false);
     });
 
     afterEach(() => {
@@ -223,8 +228,37 @@ describe('FocusShow', () => {
         await user.click(screen.getByRole('button', { name: 'Modo zen' }));
 
         expect(
-            screen.getByText(/Espaço pausa · E encerra · Esc sai/),
+            screen.getByText(/Espaço pausa · T oculta o tempo · E encerra/),
         ).toBeInTheDocument();
+    });
+
+    it('hides the clock everywhere it would otherwise leak, tab title included', async () => {
+        const user = userEvent.setup();
+        renderFocus(session({ elapsedSeconds: 600 }));
+
+        expect(document.title).toContain('40:00');
+
+        await user.click(screen.getByRole('button', { name: 'Ocultar tempo' }));
+
+        expect(screen.queryByRole('timer')).not.toBeInTheDocument();
+        expect(document.title).not.toContain('40:00');
+        expect(document.title).toContain('Álgebra Linear');
+        expect(
+            screen.getByRole('button', { name: 'Mostrar tempo' }),
+        ).toBeInTheDocument();
+    });
+
+    it('takes T as the shortcut for hiding the time', async () => {
+        const user = userEvent.setup();
+        renderFocus(session({ elapsedSeconds: 600 }));
+
+        await user.keyboard('t');
+
+        expect(screen.queryByRole('timer')).not.toBeInTheDocument();
+
+        await user.keyboard('t');
+
+        expect(screen.getByRole('timer')).toBeInTheDocument();
     });
 
     it('closes the session in one click when the log form is turned off', () => {

@@ -1,6 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { hiddenTimePreference } from '@/hooks/use-hidden-time';
 import { clearPhaseAlert } from '@/lib/phase-alert';
 import type { ActiveFocusSession } from '@/types/session';
 import { SessionBar } from './session-bar';
@@ -67,8 +68,10 @@ describe('SessionBar', () => {
         announcePhaseEnd.mockReset();
         // O aviso de fim de ciclo vive num store de módulo, fora do
         // React: sem limpar, o ciclo fechado por um teste continuaria
-        // anunciado no seguinte.
+        // anunciado no seguinte. Vale o mesmo para a preferência de
+        // esconder o tempo.
         clearPhaseAlert();
+        hiddenTimePreference.set(false);
     });
 
     it('renders no session content when there is no active session', () => {
@@ -95,6 +98,20 @@ describe('SessionBar', () => {
         expect(
             screen.getByText('Álgebra Linear · Autovalores e autovetores'),
         ).toBeInTheDocument();
+    });
+
+    it('keeps the clock hidden here too, or hiding it would be pointless', () => {
+        hiddenTimePreference.set(true);
+        mockActiveSession(session());
+
+        render(<SessionBar />);
+
+        // A barra segue o usuário por todas as telas: o tempo escondido no
+        // cronômetro voltaria por aqui.
+        expect(screen.queryByRole('timer')).not.toBeInTheDocument();
+        expect(screen.queryByText('47:55')).not.toBeInTheDocument();
+        expect(screen.getByText('Em foco')).toBeInTheDocument();
+        expect(screen.getByRole('progressbar')).toBeInTheDocument();
     });
 
     it('never shows negative time when the phase overruns', () => {

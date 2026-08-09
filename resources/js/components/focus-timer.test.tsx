@@ -172,6 +172,25 @@ describe('FocusTimer', () => {
         ).not.toBeInTheDocument();
     });
 
+    it('hides the clock without hiding how far along the cycle is', () => {
+        renderTimer({ hideTime: true, elapsedSeconds: 600 });
+
+        expect(screen.queryByText('40:00')).not.toBeInTheDocument();
+        expect(screen.queryByText(/de 50 min/)).not.toBeInTheDocument();
+        // Sem o número, quem diz onde a sessão está é o rótulo da fase e o
+        // progresso — que mostra andamento, não tempo.
+        expect(screen.getByText('Em foco')).toBeInTheDocument();
+        expect(screen.getByRole('progressbar')).toBeInTheDocument();
+    });
+
+    it('stops narrating the time it was asked to hide', () => {
+        renderTimer({ hideTime: true });
+
+        // Um `role="timer"` com o tempo no rótulo entregaria pelo leitor
+        // de tela exatamente o que ficou escondido na tela.
+        expect(screen.queryByRole('timer')).not.toBeInTheDocument();
+    });
+
     it('shows the subject and topic together', () => {
         renderTimer();
 
