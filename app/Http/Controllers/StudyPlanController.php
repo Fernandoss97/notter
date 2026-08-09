@@ -22,7 +22,9 @@ class StudyPlanController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $plans = $user->studyPlans()->orderByDesc('is_active')->orderBy('name')->get();
+        // Ordem estável: o seletor de plano ativo é feito de alvos clicáveis,
+        // e promover o ativo para a frente os faria dançar a cada troca.
+        $plans = $user->studyPlans()->orderBy('name')->get();
         $activePlan = $user->activeStudyPlan()->with('subjects.topics.reviews')->first();
 
         return Inertia::render('plan/index', [

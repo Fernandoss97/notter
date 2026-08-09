@@ -55,6 +55,31 @@ test('creating a plan makes it active', function () {
         ->and($plan->is_active)->toBeTrue();
 });
 
+test('the plan list keeps a stable order regardless of which plan is active', function () {
+    $user = User::factory()->create();
+    StudyPlan::factory()->for($user)->create(['name' => 'Zeta']);
+    StudyPlan::factory()->for($user)->active()->create(['name' => 'Alfa']);
+    StudyPlan::factory()->for($user)->create(['name' => 'Beta']);
+
+    $this->actingAs($user)
+        ->get('/plano')
+        ->assertInertia(fn ($page) => $page
+            ->where('plans.0.name', 'Alfa')
+            ->where('plans.1.name', 'Beta')
+            ->where('plans.2.name', 'Zeta'));
+
+    $zeta = $user->studyPlans()->where('name', 'Zeta')->sole();
+    $this->actingAs($user)->post("/plano/{$zeta->id}/activate");
+
+    // A troca de plano ativo não pode reordenar o seletor.
+    $this->actingAs($user)
+        ->get('/plano')
+        ->assertInertia(fn ($page) => $page
+            ->where('plans.0.name', 'Alfa')
+            ->where('plans.1.name', 'Beta')
+            ->where('plans.2.name', 'Zeta'));
+});
+
 test('creating a second plan deactivates the first', function () {
     $user = User::factory()->create();
     $first = StudyPlan::factory()->for($user)->active()->create();
