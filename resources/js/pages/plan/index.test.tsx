@@ -208,6 +208,48 @@ describe('PlanIndex', () => {
         );
     });
 
+    it('toggles a topic in both directions, echoing each click', async () => {
+        render(
+            <PlanIndex
+                plans={[]}
+                activePlan={{
+                    ...activePlan,
+                    subjects: [subjectWithCycles(0)],
+                }}
+            />,
+        );
+
+        await userEvent.click(
+            screen.getByRole('button', {
+                name: 'Marcar Matrizes como concluído',
+            }),
+        );
+
+        expect(post).toHaveBeenCalledWith(
+            expect.stringContaining('/complete'),
+            {},
+            expect.objectContaining({ showProgress: false }),
+        );
+
+        const checkbox = screen.getByRole('button', {
+            name: 'Desmarcar Matrizes como concluído',
+        });
+        expect(checkbox).toHaveAttribute('aria-pressed', 'true');
+
+        await userEvent.click(checkbox);
+
+        expect(post).toHaveBeenLastCalledWith(
+            expect.stringContaining('/uncomplete'),
+            {},
+            expect.objectContaining({ showProgress: false }),
+        );
+        expect(
+            screen.getByRole('button', {
+                name: 'Marcar Matrizes como concluído',
+            }),
+        ).toHaveAttribute('aria-pressed', 'false');
+    });
+
     it('announces the exam date in the plan subtitle, in reading format', () => {
         render(
             <PlanIndex

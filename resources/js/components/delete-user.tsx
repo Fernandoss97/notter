@@ -36,8 +36,8 @@ export default function DeleteUser() {
                         Excluir conta
                     </div>
                     <div className="mt-0.5 text-xs text-muted-foreground">
-                        Apaga sua conta e todos os dados de estudo. Não dá para
-                        desfazer.
+                        Apaga sua conta, e com ela tudo o que você estudou. Não
+                        dá para desfazer.
                     </div>
                 </div>
 
