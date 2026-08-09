@@ -14,7 +14,7 @@ class PomodoroSettingController extends Controller
     {
         $settings = $request->user()->pomodoroSetting()->firstOrCreate([]);
 
-        return Inertia::render('pomodoro/edit', [
+        return Inertia::render('settings/pomodoro', [
             'settings' => [
                 'focusMinutes' => $settings->focus_minutes,
                 'shortBreakMinutes' => $settings->short_break_minutes,

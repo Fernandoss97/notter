@@ -1,7 +1,6 @@
 import { Link } from '@inertiajs/react';
-import { BookOpen, History, LayoutGrid, Settings, Timer } from 'lucide-react';
+import { BookOpen, History, LayoutGrid, Timer } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
-import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -17,7 +16,6 @@ import { dashboard } from '@/routes';
 import { show as showFocus } from '@/routes/focus';
 import { index as showHistory } from '@/routes/history';
 import { index as showPlan } from '@/routes/plans';
-import { edit as showPomodoroSettings } from '@/routes/pomodoro-settings';
 import type { NavItem } from '@/types';
 
 // Foco primeiro: é a tela onde o usuário passa a maior parte do tempo e
@@ -45,14 +43,6 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Configurações',
-        href: showPomodoroSettings(),
-        icon: Settings,
-    },
-];
-
 export function AppSidebar() {
     return (
         <Sidebar collapsible="icon" variant="sidebar">
@@ -73,7 +63,6 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

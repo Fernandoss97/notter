@@ -17,7 +17,10 @@ test('the sidebar shows the product navigation and marks focus as active', funct
         ->assertSee('Progresso')
         ->assertSee('Plano de estudos')
         ->assertSee('Histórico')
-        ->assertSee('Configurações')
+        // O rodapé agora traz o próprio usuário (atalho para as configurações)
+        // e a saída, sem menu suspenso.
+        ->assertSee($user->name)
+        ->assertSee('Sair')
         ->assertNoJavaScriptErrors();
 
     // Foco é a tela principal: o login cai nela e é ela que fica marcada.

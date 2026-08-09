@@ -12,8 +12,12 @@ test('a user can change the focus duration and save', function () {
         ->assertPathIs('/foco')
         ->assertNoJavaScriptErrors();
 
+    // O item do usuário na sidebar é a porta de entrada das configurações; a
+    // tela de pomodoro fica no menu lateral de lá.
     $page->hover('[data-slot="sidebar"]')
-        ->click('Configurações')
+        ->click($user->name)
+        ->assertPathIs('/settings/profile')
+        ->click('Pomodoro')
         ->assertPathIs('/configuracoes')
         ->assertNoJavaScriptErrors();
 

@@ -14,7 +14,7 @@ test('the settings screen creates a default row for a user without one yet', fun
         ->get('/configuracoes')
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
-            ->component('pomodoro/edit')
+            ->component('settings/pomodoro')
             ->where('settings.focusMinutes', 50)
             ->where('settings.cyclesBeforeLongBreak', 4));
 
