@@ -238,3 +238,62 @@ Notes:
 - In browser tests, never click by bare text when the label can appear twice. The persistent `SessionBar` stays in the DOM on the focus screen — collapsed and `inert`, but a text click resolves to it first and then waits forever on an invisible element. Scope the selector (`[data-slot="focus-timer"] button:text-is("Pausar")`). Parentheses in a label also break the CSS selector parser — use `button:has-text("…")` without them.
 - Browser tests render the actual built frontend. If `public/hot` is left over from a killed `npm run dev`, the page will load blank (pointing at a dead dev-server URL) — delete it, or just don't have a stale dev server running when you run browser tests.
 - `tests/Unit/ArchTest.php` enforces baseline structure (controllers/requests/models suffixes and extends, no `dd`/`dump`/`die` in `App`). Extend it as new conventions get established, don't bypass it.
+
+# Motion & UI (project-specific, not managed by Boost)
+
+Motion here communicates state, hierarchy, or continuity. If an animation does none of those, it shouldn't exist. Every rule below is already implemented somewhere in the codebase — follow the existing example rather than inventing a parallel approach.
+
+## Tokens — never magic values
+
+All durations and curves live in `@theme` in `resources/css/app.css`:
+
+| Token | Value | Use for |
+|---|---|---|
+| `duration-instant` | 80ms | `:active`, click feedback |
+| `duration-fast` | 120ms | hover, color, focus ring |
+| `duration-base` | 200ms | state change, progress |
+| `duration-slow` | 320ms | panel / route entrance |
+| `ease-out` | `cubic-bezier(0.16, 1, 0.3, 1)` | entering (asymmetric: decelerates) |
+| `ease-in` | `cubic-bezier(0.7, 0, 0.84, 0)` | exiting (accelerates) |
+| `ease-standard` | `cubic-bezier(0.4, 0, 0.2, 1)` | repositioning something already on screen |
+
+- Never write raw `duration-200`, `duration-[350ms]`, or `ease-linear`. `ease-linear` in particular reads as mechanical and is what made the app feel dry before.
+- **The project overrides Tailwind's own `ease-in`/`ease-out`.** Don't cross-reference the Tailwind docs for their values — read `app.css`.
+- **Tailwind v4 namespace trap:** `duration-*` utilities resolve *only* from `--transition-duration-*` declared inside `@theme`. A duration token defined in `:root` compiles to **nothing at all**, with no error and no warning — the class simply doesn't exist and the transition is instant. After adding a token, confirm it materialized: build and grep the output for `.duration-<name>{`.
+
+## Reduced motion
+
+- `@layer base` in `app.css` already neutralizes *all* motion under `prefers-reduced-motion: reduce` with a global `*` guard. New CSS transitions/animations inherit it — do not add per-component media queries.
+- It uses `1ms`, not `0s`, on purpose: Radix unmounts dialog/sheet by listening to `animationend`/`transitionend`, and `0s` never fires those. Don't "simplify" it.
+- The corollary: **JS-driven animation escapes that guard.** Anything animated via rAF, Framer Motion, or GSAP must check `prefers-reduced-motion` itself. Prefer pure CSS; only reach for a library when the gain clearly justifies the cost, and say what the trade-off is.
+
+## What to animate
+
+- Default to `transform` and `opacity`. Animating `width`/`height`/`top`/`left`/`margin` forces layout on every frame.
+- Exceptions are allowed when the layout change *is* the point — but they need an inline comment justifying it. `resources/js/components/session-bar.tsx` is the canonical template: it animates `height` because reserving and returning the 64px is exactly what stops the page from jumping, and only the container pays.
+- Progress fills use `translateX(-N%)`, not `width` and not `scaleX` (`scaleX` flattens the right-end border radius). See `resources/js/components/ui/progress-bar.tsx`.
+
+## Interaction feedback
+
+- Every clickable surface responds **instantly**, at 0ms delay, regardless of how long the underlying request takes: `active:scale-[0.98] active:duration-instant` (or `active:scale-90` on small controls like checkboxes). `ui/button.tsx` already carries it — reuse `Button` instead of styling a bare `<button>`.
+- Anything clickable must be a real `<button>` or `<a>`, never a `div` with `onClick` — keyboard focus and screen readers come first, and `focus-visible` rings are part of the motion budget, not an afterthought.
+
+## Perceived latency
+
+The optimistic-update pattern, used in `pages/history/index.tsx`, `pages/plan/index.tsx`, and `components/session-bar.tsx`:
+
+1. Local pending state set on submit, rendered immediately.
+2. `router.get`/`router.post` with `showProgress: false` — the top bar competing with local feedback reads as double reporting.
+3. `onFinish` clears the pending state (rollback happens naturally when the server's props win).
+4. The optimistic echo renders at reduced opacity (`opacity-60`) *in the slot the real item will occupy*, so nothing moves when it resolves. Lists in flight get `aria-busy` + `opacity-50` instead of being replaced by a spinner.
+
+## Choreography and layout
+
+- `.stagger-children` (defined in `app.css`) staggers direct children by 40ms, capped at 8 steps so long lists don't finish entering after the user has scrolled past. Use it instead of hand-rolled per-item delays. `animate-none` on a child is the documented escape hatch (used for the pending echo, which must not wait its turn).
+- Don't nest staggers — a delayed child inside a delayed parent is exactly the excess these rules exist to prevent.
+- Prefer always-rendering a section with an empty state over conditionally mounting it; a section popping into existence is a layout shift.
+- UI that collapses but stays mounted (to animate its own entrance) must be hidden from assistive tech too: `aria-hidden` plus `inert={!visible || undefined}`. The `|| undefined` matters — `inert="false"` still inerts the subtree. This mounted-but-inert `SessionBar` is also why the browser-test note above insists on scoping text selectors.
+
+## Testing
+
+Motion changes are React-component changes: they follow the TDD rules above (Vitest alongside the file). Assert the *contract* — `data-visible`, `aria-hidden`, `inert`, `aria-busy`, the rendered pending echo — not class strings or timing.
