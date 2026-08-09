@@ -58,7 +58,7 @@ class HandleInertiaRequests extends Middleware
      * o total passaria dos `plannedSeconds` e a barra de progresso ficaria
      * cravada em 100%.
      *
-     * @return array{id: int, subject: string, topic: string, state: string, phase: string, elapsedSeconds: int, plannedSeconds: int}|null
+     * @return array{id: int, subject: string, topic: string, state: string, phase: string, completedCycles: int, elapsedSeconds: int, plannedSeconds: int}|null
      */
     private function activeSessionProp(Request $request): ?array
     {
@@ -83,6 +83,9 @@ class HandleInertiaRequests extends Middleware
             'topic' => $topic instanceof Topic ? $topic->name : __('Sem tópico'),
             'state' => $session->state->value,
             'phase' => $session->phase->value,
+            // A barra é quem fecha o ciclo quando o tempo acaba, de
+            // qualquer tela: precisa distinguir uma fase da seguinte.
+            'completedCycles' => $session->completed_cycles,
             'elapsedSeconds' => $session->phaseElapsedSeconds(),
             'plannedSeconds' => $session->planned_seconds,
         ];

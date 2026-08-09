@@ -141,53 +141,21 @@ describe('FocusShow', () => {
         expect(screen.getByText('2 pomodoros hoje')).toBeInTheDocument();
     });
 
-    it('closes the cycle exactly once when the clock runs out', () => {
+    it('leaves closing the cycle to the session bar', () => {
         vi.useFakeTimers();
-        // Falta 1 segundo: o efeito de fim de ciclo ainda não pode disparar.
         renderFocus(session({ elapsedSeconds: 2999 }));
 
-        expect(post).not.toHaveBeenCalled();
-
         act(() => {
             vi.advanceTimersByTime(5000);
         });
 
-        const advances = post.mock.calls.filter(
-            ([url]) => url === '/foco/advance',
-        );
-
-        // Cinco ticks correram depois da expiração e o servidor (mockado)
-        // nunca respondeu: o fim do ciclo vale um POST, não um por tick.
-        expect(advances).toHaveLength(1);
-        expect(announcePhaseEnd).toHaveBeenCalledOnce();
-    });
-
-    it('does not close a cycle that still has time left', () => {
-        vi.useFakeTimers();
-        renderFocus(session({ elapsedSeconds: 10 }));
-
-        act(() => {
-            vi.advanceTimersByTime(5000);
-        });
-
-        expect(post).not.toHaveBeenCalled();
+        // A barra está montada em todas as telas, inclusive nesta, e é
+        // ela que pede o avanço (ver use-phase-end). Fazer o mesmo aqui
+        // fecharia o ciclo duas vezes.
+        expect(
+            post.mock.calls.filter(([url]) => url === '/foco/advance'),
+        ).toHaveLength(0);
         expect(announcePhaseEnd).not.toHaveBeenCalled();
-    });
-
-    it('announces the end of a break with its own wording', () => {
-        vi.useFakeTimers();
-        renderFocus(
-            session({
-                phase: 'short_break',
-                elapsedSeconds: 600,
-                plannedSeconds: 600,
-            }),
-        );
-
-        expect(announcePhaseEnd).toHaveBeenCalledWith(
-            'Intervalo terminado',
-            expect.stringContaining('voltar ao foco'),
-        );
     });
 
     it('keeps the review queue reachable but muted while focusing', () => {

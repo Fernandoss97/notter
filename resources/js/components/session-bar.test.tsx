@@ -4,9 +4,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ActiveFocusSession } from '@/types/session';
 import { SessionBar } from './session-bar';
 
-const { usePage, post } = vi.hoisted(() => ({
+const { usePage, post, announcePhaseEnd } = vi.hoisted(() => ({
     usePage: vi.fn(),
     post: vi.fn(),
+    announcePhaseEnd: vi.fn(),
+}));
+
+vi.mock('@/lib/focus-alerts', () => ({
+    announcePhaseEnd,
+    requestNotificationPermission: vi.fn(),
 }));
 
 vi.mock('@inertiajs/react', () => ({
@@ -35,6 +41,7 @@ function session(
         topic: 'Autovalores e autovetores',
         state: 'running',
         phase: 'focus',
+        completedCycles: 0,
         elapsedSeconds: 125,
         plannedSeconds: 3000,
         ...overrides,
@@ -53,6 +60,7 @@ describe('SessionBar', () => {
         vi.useRealTimers();
         vi.restoreAllMocks();
         post.mockReset();
+        announcePhaseEnd.mockReset();
     });
 
     it('renders no session content when there is no active session', () => {
@@ -164,6 +172,71 @@ describe('SessionBar', () => {
         render(<SessionBar />);
 
         expect(screen.getByText('3:00:23')).toBeInTheDocument();
+    });
+
+    it('closes the cycle from any screen, exactly once', () => {
+        vi.useFakeTimers();
+        // A barra roda no /plano: sem ela, o tempo zeraria e nada
+        // aconteceria até o usuário voltar à tela de foco.
+        mockActiveSession(
+            session({ elapsedSeconds: 59, plannedSeconds: 60 }),
+            '/plano',
+        );
+
+        render(<SessionBar />);
+        expect(post).not.toHaveBeenCalled();
+
+        act(() => {
+            vi.advanceTimersByTime(5000);
+        });
+
+        expect(
+            post.mock.calls.filter(([url]) => url === '/foco/advance'),
+        ).toHaveLength(1);
+        expect(announcePhaseEnd).toHaveBeenCalledOnce();
+    });
+
+    it('does not close a cycle that still has time left', () => {
+        vi.useFakeTimers();
+        mockActiveSession(session({ elapsedSeconds: 10, plannedSeconds: 600 }));
+
+        render(<SessionBar />);
+
+        act(() => {
+            vi.advanceTimersByTime(5000);
+        });
+
+        expect(post).not.toHaveBeenCalled();
+        expect(announcePhaseEnd).not.toHaveBeenCalled();
+    });
+
+    it('announces the end of a break with its own wording', () => {
+        mockActiveSession(
+            session({
+                phase: 'short_break',
+                elapsedSeconds: 600,
+                plannedSeconds: 600,
+            }),
+        );
+
+        render(<SessionBar />);
+
+        expect(announcePhaseEnd).toHaveBeenCalledWith(
+            'Intervalo terminado',
+            expect.stringContaining('voltar ao foco'),
+        );
+    });
+
+    it('drops the pause button once the time is up', () => {
+        mockActiveSession(session({ elapsedSeconds: 3000 }));
+
+        render(<SessionBar />);
+
+        // Não há o que pausar: o ciclo acabou e o avanço já foi pedido.
+        expect(
+            screen.queryByRole('button', { name: 'Pausar' }),
+        ).not.toBeInTheDocument();
+        expect(screen.getByText('Ciclo concluído')).toBeInTheDocument();
     });
 
     it('counts the remaining time down once a second while running', () => {

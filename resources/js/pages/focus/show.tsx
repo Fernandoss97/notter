@@ -1,5 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { FocusTimer } from '@/components/focus-timer';
 import InputError from '@/components/input-error';
@@ -30,10 +30,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { useHotkeys } from '@/hooks/use-hotkeys';
 import { useLiveElapsedSeconds } from '@/hooks/use-live-elapsed-seconds';
-import {
-    announcePhaseEnd,
-    requestNotificationPermission,
-} from '@/lib/focus-alerts';
+import { requestNotificationPermission } from '@/lib/focus-alerts';
 import { formatClock, formatDurationMinutes } from '@/lib/format-duration';
 import { ACTIVITY_TYPE_LABEL } from '@/lib/study-labels';
 import { suggestNextStudy } from '@/lib/study-suggestion';
@@ -389,38 +386,10 @@ function ActiveSessionView({
         });
     }
 
-    // Uma requisição por fim de ciclo. As dependências do efeito já dão
-    // conta dos ticks; o ref cobre o caso em que `finished` oscila dentro
-    // da mesma fase — um advance recusado pelo servidor ressincroniza o
-    // relógio para trás e faria o efeito disparar de novo.
-    const advancedFor = useRef<string | null>(null);
-    const phaseKey = `${session.id}:${session.phase}:${session.completedCycles}`;
-
-    useEffect(() => {
-        if (!finished || advancedFor.current === phaseKey) {
-            return;
-        }
-
-        advancedFor.current = phaseKey;
-
-        announcePhaseEnd(
-            onBreak ? 'Intervalo terminado' : 'Ciclo concluído',
-            onBreak
-                ? 'Hora de voltar ao foco.'
-                : `Pausa de ${pomodoroSetting.shortBreakMinutes} minutos.`,
-        );
-
-        const autoStart = onBreak
-            ? pomodoroSetting.autoStartFocus
-            : pomodoroSetting.autoStartBreak;
-
-        // Mesmo sem auto-start o avanço é enviado: é ele que fecha o ciclo
-        // no servidor. A diferença é que a próxima fase nasce pausada.
-        if (autoStart || !paused) {
-            advance();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [finished, phaseKey]);
+    // Fechar o ciclo quando o tempo acaba é trabalho da barra de sessão
+    // (ver use-phase-end): ela está montada em todas as telas, inclusive
+    // nesta, e fazer o mesmo aqui dispararia o avanço duas vezes. O botão
+    // do cronômetro continua servindo para o avanço manual.
 
     const remainingSeconds = Math.max(
         0,

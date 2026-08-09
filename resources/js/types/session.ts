@@ -15,6 +15,7 @@ export type ActiveFocusSession = {
     topic: string;
     state: FocusSessionState;
     phase: FocusPhase;
+    completedCycles: number;
     elapsedSeconds: number;
     plannedSeconds: number;
 };

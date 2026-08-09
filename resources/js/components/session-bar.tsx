@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { useLiveElapsedSeconds } from '@/hooks/use-live-elapsed-seconds';
+import { usePhaseEnd } from '@/hooks/use-phase-end';
 import { formatClock } from '@/lib/format-duration';
 import { cn } from '@/lib/utils';
 import {
@@ -18,6 +19,9 @@ export function SessionBar() {
     const elapsedSeconds = useLiveElapsedSeconds(activeSession);
     const { isCurrentUrl } = useCurrentUrl();
     const [pendingPaused, setPendingPaused] = useState<boolean | null>(null);
+    // A barra fecha o ciclo de qualquer tela — é a única coisa montada em
+    // todas elas.
+    const finished = usePhaseEnd(activeSession, elapsedSeconds);
 
     // O invólucro fica sempre montado, mesmo sem sessão: é o que permite
     // animar a altura de 0 -> 64px em vez de o conteúdo da página saltar.
@@ -91,7 +95,15 @@ export function SessionBar() {
                                 calm ? 'bg-pausa-500' : 'bg-focus-500',
                             )}
                         />
-                        {paused ? 'Pausado' : onBreak ? 'Intervalo' : 'Em foco'}
+                        {finished
+                            ? onBreak
+                                ? 'Intervalo terminado'
+                                : 'Ciclo concluído'
+                            : paused
+                              ? 'Pausado'
+                              : onBreak
+                                ? 'Intervalo'
+                                : 'Em foco'}
                     </span>
                     <span
                         role="timer"
@@ -111,18 +123,24 @@ export function SessionBar() {
                         trackClassName="bg-foreground/10"
                     />
                     <div className="flex-1" />
-                    <Button
-                        variant="ghost"
-                        onClick={toggle}
-                        className={cn(
-                            'font-semibold',
-                            calm
-                                ? 'text-pausa-600 hover:bg-pausa-200 hover:text-pausa-600'
-                                : 'text-focus-500 hover:bg-focus-200 hover:text-focus-500',
-                        )}
-                    >
-                        {paused ? 'Retomar' : 'Pausar'}
-                    </Button>
+                    {/* Com o tempo esgotado não há o que pausar: o ciclo
+                        acabou e o avanço já foi pedido ao servidor. Sai do
+                        DOM em vez de ficar escondido — um botão invisível
+                        e clicável é pior que botão nenhum. */}
+                    {!finished && (
+                        <Button
+                            variant="ghost"
+                            onClick={toggle}
+                            className={cn(
+                                'font-semibold',
+                                calm
+                                    ? 'text-pausa-600 hover:bg-pausa-200 hover:text-pausa-600'
+                                    : 'text-focus-500 hover:bg-focus-200 hover:text-focus-500',
+                            )}
+                        >
+                            {paused ? 'Retomar' : 'Pausar'}
+                        </Button>
+                    )}
                     <Button
                         asChild
                         variant="outline"
