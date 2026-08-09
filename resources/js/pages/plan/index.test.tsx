@@ -158,7 +158,9 @@ describe('PlanIndex', () => {
         // Uma resposta local chega antes disso: anunciar espera aqui só
         // produziria um piscar.
         expect(container.querySelector('[aria-busy="true"]')).toBeNull();
-        expect(screen.queryByText('Trocando…')).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('status', { name: 'Trocando de plano' }),
+        ).not.toBeInTheDocument();
     });
 
     it('announces the wait once it becomes perceptible', async () => {
@@ -170,7 +172,9 @@ describe('PlanIndex', () => {
         await userEvent.click(screen.getByText('Concurso ABC'));
 
         await waitFor(() =>
-            expect(screen.getByText('Trocando…')).toBeInTheDocument(),
+            expect(
+                screen.getByRole('status', { name: 'Trocando de plano' }),
+            ).toBeInTheDocument(),
         );
         expect(container.querySelectorAll('[aria-busy="true"]')).toHaveLength(
             2,
@@ -179,7 +183,9 @@ describe('PlanIndex', () => {
         act(() => post.mock.calls[0][2].onFinish());
 
         expect(container.querySelector('[aria-busy="true"]')).toBeNull();
-        expect(screen.queryByText('Trocando…')).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('status', { name: 'Trocando de plano' }),
+        ).not.toBeInTheDocument();
     });
 
     it('keeps the newest switch pending when an older one settles', async () => {
@@ -200,6 +206,48 @@ describe('PlanIndex', () => {
             'data-state',
             'on',
         );
+    });
+
+    it('toggles a topic in both directions, echoing each click', async () => {
+        render(
+            <PlanIndex
+                plans={[]}
+                activePlan={{
+                    ...activePlan,
+                    subjects: [subjectWithCycles(0)],
+                }}
+            />,
+        );
+
+        await userEvent.click(
+            screen.getByRole('button', {
+                name: 'Marcar Matrizes como concluído',
+            }),
+        );
+
+        expect(post).toHaveBeenCalledWith(
+            expect.stringContaining('/complete'),
+            {},
+            expect.objectContaining({ showProgress: false }),
+        );
+
+        const checkbox = screen.getByRole('button', {
+            name: 'Desmarcar Matrizes como concluído',
+        });
+        expect(checkbox).toHaveAttribute('aria-pressed', 'true');
+
+        await userEvent.click(checkbox);
+
+        expect(post).toHaveBeenLastCalledWith(
+            expect.stringContaining('/uncomplete'),
+            {},
+            expect.objectContaining({ showProgress: false }),
+        );
+        expect(
+            screen.getByRole('button', {
+                name: 'Marcar Matrizes como concluído',
+            }),
+        ).toHaveAttribute('aria-pressed', 'false');
     });
 
     it('announces the exam date in the plan subtitle, in reading format', () => {

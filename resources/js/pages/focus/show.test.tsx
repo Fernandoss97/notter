@@ -111,6 +111,7 @@ function renderFocus(
 ) {
     return render(
         <FocusShow
+            plans={[]}
             plan={plan}
             session={active}
             pomodoroSetting={settings}
@@ -212,6 +213,7 @@ describe('FocusShow', () => {
 
         render(
             <FocusShow
+                plans={[]}
                 plan={twoSubjects}
                 session={null}
                 pomodoroSetting={pomodoroSetting}

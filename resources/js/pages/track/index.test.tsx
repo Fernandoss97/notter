@@ -99,6 +99,7 @@ describe('TrackIndex', () => {
     it('lists the queue with the task number and its subject', () => {
         render(
             <TrackIndex
+                plans={[]}
                 plan={plan}
                 cycles={[
                     cycle({
@@ -129,6 +130,7 @@ describe('TrackIndex', () => {
     it('shows the cycle 1-based and its progress', () => {
         render(
             <TrackIndex
+                plans={[]}
                 plan={plan}
                 cycles={[cycle({ cycle: 0, done: 1, total: 2 })]}
             />,
@@ -141,6 +143,7 @@ describe('TrackIndex', () => {
     it('reports when a task was completed', () => {
         render(
             <TrackIndex
+                plans={[]}
                 plan={plan}
                 cycles={[
                     cycle({
@@ -162,7 +165,7 @@ describe('TrackIndex', () => {
     });
 
     it('marks a task as done optimistically, without a progress bar', async () => {
-        render(<TrackIndex plan={plan} cycles={[cycle()]} />);
+        render(<TrackIndex plans={[]} plan={plan} cycles={[cycle()]} />);
 
         await userEvent.click(
             screen.getByRole('button', {
@@ -177,17 +180,52 @@ describe('TrackIndex', () => {
         );
         // O eco: o botão já responde como concluído antes da resposta chegar.
         expect(
-            screen.getByRole('button', { name: 'Aula 00 concluída' }),
-        ).toBeDisabled();
+            screen.getByRole('button', {
+                name: 'Desmarcar Aula 00 como concluída',
+            }),
+        ).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('undoes a task marked by accident', async () => {
+        render(
+            <TrackIndex
+                plans={[]}
+                plan={plan}
+                cycles={[
+                    cycle({ done: 1, tasks: [task({ completed: true })] }),
+                ]}
+            />,
+        );
+
+        await userEvent.click(
+            screen.getByRole('button', {
+                name: 'Desmarcar Aula 00 como concluída',
+            }),
+        );
+
+        expect(post).toHaveBeenCalledWith(
+            expect.stringContaining('/uncomplete'),
+            {},
+            expect.objectContaining({ showProgress: false }),
+        );
+        // O eco precisa valer nos dois sentidos: desmarcar que continuasse
+        // parecendo marcado faria o clique parecer não ter acontecido.
+        expect(
+            screen.getByRole('button', {
+                name: 'Marcar Aula 00 como concluída',
+            }),
+        ).toHaveAttribute('aria-pressed', 'false');
     });
 
     it('keeps the empty state mounted but inert once there are tasks', () => {
-        const { rerender } = render(<TrackIndex plan={plan} cycles={[]} />);
+        const { rerender } = render(
+            <TrackIndex plans={[]} plan={plan} cycles={[]} />,
+        );
 
         const empty = document.querySelector('[data-slot="track-empty"]');
         expect(empty).toHaveAttribute('data-visible', 'true');
 
-        rerender(<TrackIndex plan={plan} cycles={[cycle()]} />);
+        rerender(<TrackIndex plans={[]} plan={plan} cycles={[cycle()]} />);
 
         expect(
             document.querySelector('[data-slot="track-empty"]'),
@@ -195,13 +233,19 @@ describe('TrackIndex', () => {
     });
 
     it('defaults a new task to the current cycle, shown 1-based', () => {
-        render(<TrackIndex plan={plan} cycles={[cycle({ cycle: 2 })]} />);
+        render(
+            <TrackIndex
+                plans={[]}
+                plan={plan}
+                cycles={[cycle({ cycle: 2 })]}
+            />,
+        );
 
         expect(screen.getByLabelText('Ciclo')).toHaveValue(3);
     });
 
     it('echoes a task being added while the server confirms', async () => {
-        render(<TrackIndex plan={plan} cycles={[cycle()]} />);
+        render(<TrackIndex plans={[]} plan={plan} cycles={[cycle()]} />);
 
         await userEvent.type(
             screen.getByLabelText('Tarefa'),
@@ -222,6 +266,7 @@ describe('TrackIndex', () => {
     it('reports the questions of a task and of its cycle', () => {
         render(
             <TrackIndex
+                plans={[]}
                 plan={plan}
                 cycles={[
                     cycle({
@@ -249,7 +294,7 @@ describe('TrackIndex', () => {
     });
 
     it('says nothing about questions when none were recorded', () => {
-        render(<TrackIndex plan={plan} cycles={[cycle()]} />);
+        render(<TrackIndex plans={[]} plan={plan} cycles={[cycle()]} />);
 
         expect(screen.queryByText(/questões/)).not.toBeInTheDocument();
     });
@@ -257,6 +302,7 @@ describe('TrackIndex', () => {
     it('records the questions of a task, replacing the pair', async () => {
         render(
             <TrackIndex
+                plans={[]}
                 plan={plan}
                 cycles={[
                     cycle({
@@ -294,7 +340,7 @@ describe('TrackIndex', () => {
     });
 
     it('imports a paste from the spreadsheet', async () => {
-        render(<TrackIndex plan={plan} cycles={[cycle()]} />);
+        render(<TrackIndex plans={[]} plan={plan} cycles={[cycle()]} />);
 
         await userEvent.click(
             screen.getByRole('button', { name: 'Importar trilha' }),
@@ -313,15 +359,31 @@ describe('TrackIndex', () => {
     });
 
     it('offers no import when there is no plan to import into', () => {
-        render(<TrackIndex plan={null} cycles={[]} />);
+        render(<TrackIndex plans={[]} plan={null} cycles={[]} />);
 
         expect(
             screen.queryByRole('button', { name: 'Importar trilha' }),
         ).not.toBeInTheDocument();
     });
 
+    it('lets the user switch plans from the track', () => {
+        render(
+            <TrackIndex
+                plans={[
+                    { id: 1, name: 'Concurso XYZ' },
+                    { id: 2, name: 'Concurso ABC' },
+                ]}
+                plan={plan}
+                cycles={[cycle()]}
+            />,
+        );
+
+        expect(screen.getByText('Plano ativo')).toBeInTheDocument();
+        expect(screen.getByText('Concurso ABC')).toBeInTheDocument();
+    });
+
     it('points to the plan screen when there is no active plan', () => {
-        render(<TrackIndex plan={null} cycles={[]} />);
+        render(<TrackIndex plans={[]} plan={null} cycles={[]} />);
 
         expect(
             screen.getByRole('link', { name: 'Criar plano de estudos' }),

@@ -10,6 +10,7 @@ use App\Actions\Study\PauseFocusSession;
 use App\Actions\Study\ResolveCurrentFocusSession;
 use App\Actions\Study\ResumeFocusSession;
 use App\Actions\Study\StartFocusSession;
+use App\Concerns\ListsStudyPlans;
 use App\Concerns\SummarizesStudyTime;
 use App\Http\Requests\Study\CompleteFocusSessionRequest;
 use App\Http\Requests\Study\StartFocusSessionRequest;
@@ -31,6 +32,7 @@ use Inertia\Response;
 
 class FocusSessionController extends Controller
 {
+    use ListsStudyPlans;
     use SummarizesStudyTime;
 
     /**
@@ -64,6 +66,7 @@ class FocusSessionController extends Controller
         }
 
         return Inertia::render('focus/show', [
+            'plans' => $this->planOptions($request),
             'plan' => $plan ? [
                 'id' => $plan->id,
                 'name' => $plan->name,

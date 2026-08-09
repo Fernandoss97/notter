@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Study\CompleteTopic;
+use App\Actions\Study\UncompleteTopic;
 use App\Http\Requests\Study\StoreTopicRequest;
 use App\Http\Requests\Study\UpdateTopicExercisesRequest;
 use App\Models\StudyPlan;
@@ -38,6 +39,19 @@ class TopicController extends Controller
     }
 
     public function complete(Request $request, Topic $topic, CompleteTopic $action): RedirectResponse
+    {
+        abort_unless($topic->subject->studyPlan->user_id === $request->user()->id, 403);
+
+        $action->handle($topic);
+
+        return back();
+    }
+
+    /**
+     * Desfaz a conclusão. É o par de `complete()`, e existe porque o
+     * checkbox erra: sem isto, um clique acidental era permanente.
+     */
+    public function uncomplete(Request $request, Topic $topic, UncompleteTopic $action): RedirectResponse
     {
         abort_unless($topic->subject->studyPlan->user_id === $request->user()->id, 403);
 

@@ -6,6 +6,7 @@ use App\Actions\Study\Exceptions\InvalidTrackImportException;
 use App\Actions\Study\ImportStudyTrack;
 use App\Actions\Study\ParseTrackImport;
 use App\Concerns\CalculatesPercentage;
+use App\Concerns\ListsStudyPlans;
 use App\Http\Requests\Study\ImportStudyTrackRequest;
 use App\Models\StudyPlan;
 use App\Models\Topic;
@@ -18,6 +19,7 @@ use Inertia\Response;
 class StudyTrackController extends Controller
 {
     use CalculatesPercentage;
+    use ListsStudyPlans;
 
     /**
      * A trilha: as tarefas do plano numa fila só, agrupadas em ciclos.
@@ -32,6 +34,7 @@ class StudyTrackController extends Controller
         $plan = $request->user()->activeStudyPlan()->with('subjects')->first();
 
         return Inertia::render('track/index', [
+            'plans' => $this->planOptions($request),
             'plan' => $plan instanceof StudyPlan ? [
                 'id' => $plan->id,
                 'name' => $plan->name,
