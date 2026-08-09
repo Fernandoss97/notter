@@ -104,6 +104,74 @@ describe('FocusTimer', () => {
         expect(props.onToggle).toHaveBeenCalledOnce();
     });
 
+    it('offers to start the phase that was born paused, not to resume it', () => {
+        renderTimer({
+            phase: 'short_break',
+            paused: true,
+            elapsedSeconds: 0,
+            plannedSeconds: 600,
+            alertPhase: 'focus',
+        });
+
+        // Auto-start desligado: o intervalo existe mas ninguém o começou.
+        // "Retomar" mentiria sobre o que o botão faz.
+        expect(
+            screen.getByRole('button', { name: 'Começar intervalo' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'Retomar' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('still resumes a phase paused in its first seconds', () => {
+        renderTimer({ paused: true, elapsedSeconds: 0 });
+
+        // Sem aviso de ciclo encerrado, um relógio em zero é só alguém
+        // que pausou logo depois de começar.
+        expect(
+            screen.getByRole('button', { name: 'Retomar' }),
+        ).toBeInTheDocument();
+    });
+
+    it('keeps announcing the cycle that ended after the next one opens', () => {
+        renderTimer({
+            phase: 'short_break',
+            paused: true,
+            elapsedSeconds: 0,
+            plannedSeconds: 600,
+            alertPhase: 'focus',
+        });
+
+        expect(screen.getByText('Ciclo concluído')).toBeInTheDocument();
+    });
+
+    it('buys five more minutes of focus without closing the cycle', async () => {
+        const onExtend = vi.fn();
+        renderTimer({ onExtend });
+
+        await userEvent.click(screen.getByRole('button', { name: '+5 min' }));
+
+        expect(onExtend).toHaveBeenCalledOnce();
+    });
+
+    it('never offers to stretch a break', () => {
+        renderTimer({ phase: 'short_break', onExtend: vi.fn() });
+
+        expect(
+            screen.queryByRole('button', { name: '+5 min' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('stops offering more minutes once the cycle is already closing', () => {
+        renderTimer({ elapsedSeconds: 3000, onExtend: vi.fn() });
+
+        // O avanço já foi pedido ao servidor: esticar agora faria o
+        // servidor recusá-lo, e ninguém pediria de novo.
+        expect(
+            screen.queryByRole('button', { name: '+5 min' }),
+        ).not.toBeInTheDocument();
+    });
+
     it('shows the subject and topic together', () => {
         renderTimer();
 

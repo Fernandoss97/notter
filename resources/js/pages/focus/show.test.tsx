@@ -1,4 +1,5 @@
 import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
     DueReview,
@@ -46,7 +47,10 @@ vi.mock('@inertiajs/react', async () => {
 
 vi.mock('@/lib/focus-alerts', () => ({
     announcePhaseEnd,
+    prepareAlerts: vi.fn(),
     requestNotificationPermission: vi.fn(),
+    notificationsBlocked: vi.fn(() => false),
+    unlockAudio: vi.fn(),
 }));
 
 const plan: StudyPlanSummary = {
@@ -192,6 +196,35 @@ describe('FocusShow', () => {
         ]);
 
         expect(screen.getByText('1 atrasada')).toBeInTheDocument();
+    });
+
+    it('paints the zen mode with the colour the user picked', async () => {
+        const user = userEvent.setup();
+        const { container } = renderFocus(session());
+
+        await user.click(screen.getByRole('button', { name: 'Modo zen' }));
+
+        const overlay = container.querySelector(
+            'div[data-zen-theme]:not([role="group"] *)',
+        ) as HTMLElement;
+
+        expect(overlay).toHaveAttribute('data-zen-theme', 'coral');
+
+        await user.click(screen.getByRole('button', { name: 'Índigo' }));
+
+        expect(overlay).toHaveAttribute('data-zen-theme', 'indigo');
+        expect(overlay.style.getPropertyValue('--zen-hue')).toBe('285');
+    });
+
+    it('keeps the shortcuts in sight inside the zen mode', async () => {
+        const user = userEvent.setup();
+        renderFocus(session());
+
+        await user.click(screen.getByRole('button', { name: 'Modo zen' }));
+
+        expect(
+            screen.getByText(/Espaço pausa · E encerra · Esc sai/),
+        ).toBeInTheDocument();
     });
 
     it('closes the session in one click when the log form is turned off', () => {

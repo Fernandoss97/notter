@@ -4,6 +4,12 @@ export type LiveSession = {
     id: number;
     state: 'running' | 'paused' | 'completed';
     elapsedSeconds: number;
+    /**
+     * Quando informado, o hook também agenda um tick para o instante
+     * exato do fim da fase — é o que impede o fim do pomodoro de ficar
+     * esperando o próximo disparo de um intervalo estrangulado.
+     */
+    plannedSeconds?: number;
 };
 
 /**
@@ -40,6 +46,7 @@ export function useLiveElapsedSeconds(session: LiveSession | null): number {
     }
 
     const running = session?.state === 'running';
+    const plannedSeconds = session?.plannedSeconds;
 
     useEffect(() => {
         if (!running) {
@@ -54,12 +61,27 @@ export function useLiveElapsedSeconds(session: LiveSession | null): number {
 
         const interval = setInterval(tick, 1000);
         document.addEventListener('visibilitychange', tick);
+        // A aba pode estar visível e a janela atrás de outra: aí
+        // `visibilitychange` não dispara e só o retorno do foco avisa.
+        window.addEventListener('focus', tick);
+
+        // O tick do fim da fase é agendado direto, sem depender do
+        // intervalo de 1s: é o único instante em que atrasar tem
+        // consequência — o aviso de fim de pomodoro sairia tarde.
+        const remainingMs =
+            plannedSeconds === undefined
+                ? -1
+                : (plannedSeconds - sync.seconds) * 1000;
+        const endTimeout =
+            remainingMs > 0 ? setTimeout(tick, remainingMs + 50) : undefined;
 
         return () => {
             clearInterval(interval);
+            clearTimeout(endTimeout);
             document.removeEventListener('visibilitychange', tick);
+            window.removeEventListener('focus', tick);
         };
-    }, [running, sync]);
+    }, [running, sync, plannedSeconds]);
 
     return displaySeconds;
 }

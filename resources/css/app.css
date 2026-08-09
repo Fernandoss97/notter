@@ -261,6 +261,49 @@
     --chart-5: oklch(68% 0.13 300);
 }
 
+/* Cor tema do modo zen.
+   Os ramps de foco mantêm luminosidade fixa e variam só o matiz, então um
+   par de números (`--zen-hue` e o fator de croma, injetados inline pelo
+   container) reconstrói a paleta inteira sem perder contraste.
+
+   Escopado no container do zen de propósito: redefinir os tokens em
+   `:root` pintaria o app inteiro. E os utilitários do Tailwind leem
+   `--color-focus-*`, cujo valor já vem substituído de `:root` — herdar
+   `--focus-*` sozinho não muda `bg-focus-500`, por isso os dois níveis
+   aparecem aqui. */
+[data-zen-theme] {
+    --focus-100: oklch(94.5% calc(0.03 * var(--zen-chroma)) var(--zen-hue));
+    --focus-200: oklch(88% calc(0.06 * var(--zen-chroma)) var(--zen-hue));
+    --focus-400: oklch(72% calc(0.14 * var(--zen-chroma)) var(--zen-hue));
+    --focus-500: oklch(62% calc(0.18 * var(--zen-chroma)) var(--zen-hue));
+    --focus-600: oklch(53% calc(0.17 * var(--zen-chroma)) var(--zen-hue));
+    --focus-700: oklch(44% calc(0.15 * var(--zen-chroma)) var(--zen-hue));
+
+    --color-focus-100: var(--focus-100);
+    --color-focus-200: var(--focus-200);
+    --color-focus-400: var(--focus-400);
+    --color-focus-500: var(--focus-500);
+    --color-focus-600: var(--focus-600);
+    --color-focus-700: var(--focus-700);
+
+    /* O primário e o anel de foco acompanham: no zen o botão de pausar é
+       o único elemento de ação, e ele destoando da cor escolhida seria a
+       primeira coisa que se nota. */
+    --primary: var(--focus-500);
+    --color-primary: var(--primary);
+    --ring: var(--focus-500);
+    --color-ring: var(--ring);
+}
+
+.dark [data-zen-theme] {
+    --focus-100: oklch(28% calc(0.05 * var(--zen-chroma)) var(--zen-hue));
+    --focus-200: oklch(34% calc(0.08 * var(--zen-chroma)) var(--zen-hue));
+    --focus-400: oklch(58% calc(0.15 * var(--zen-chroma)) var(--zen-hue));
+    --focus-500: oklch(66% calc(0.18 * var(--zen-chroma)) var(--zen-hue));
+    --focus-600: oklch(72% calc(0.17 * var(--zen-chroma)) var(--zen-hue));
+    --focus-700: oklch(78% calc(0.15 * var(--zen-chroma)) var(--zen-hue));
+}
+
 @layer base {
     * {
         @apply border-border;

@@ -116,6 +116,65 @@ describe('useLiveElapsedSeconds', () => {
         expect(result.current).toBe(120);
     });
 
+    it('schedules a read for the exact end of the phase', () => {
+        vi.useFakeTimers();
+        const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+
+        renderHook(() =>
+            useLiveElapsedSeconds({
+                id: 1,
+                state: 'running',
+                elapsedSeconds: 30,
+                plannedSeconds: 90,
+            }),
+        );
+
+        // O estrangulamento de aba em segundo plano não existe no jsdom,
+        // então o que dá para verificar é o agendamento: sem ele o fim do
+        // pomodoro esperaria o próximo disparo de um intervalo que, em
+        // segundo plano, vem de minuto em minuto.
+        expect(setTimeoutSpy).toHaveBeenCalledWith(
+            expect.any(Function),
+            60_050,
+        );
+    });
+
+    it('schedules nothing extra for a phase that already overran', () => {
+        vi.useFakeTimers();
+        const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+
+        renderHook(() =>
+            useLiveElapsedSeconds({
+                id: 1,
+                state: 'running',
+                elapsedSeconds: 120,
+                plannedSeconds: 90,
+            }),
+        );
+
+        expect(setTimeoutSpy).not.toHaveBeenCalled();
+    });
+
+    it('recomputes when the window gets the focus back', () => {
+        vi.useFakeTimers();
+        const { result } = renderHook(() =>
+            useLiveElapsedSeconds({
+                id: 1,
+                state: 'running',
+                elapsedSeconds: 0,
+            }),
+        );
+
+        // Aba visível atrás de outra janela: `visibilitychange` não
+        // dispara, só o foco volta.
+        act(() => {
+            vi.setSystemTime(Date.now() + 45_000);
+            window.dispatchEvent(new Event('focus'));
+        });
+
+        expect(result.current).toBe(45);
+    });
+
     it('resets when switching to a different session', () => {
         const { result, rerender } = renderHook(
             ({ id, elapsedSeconds }) =>

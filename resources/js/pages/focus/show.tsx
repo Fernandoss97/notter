@@ -1,5 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import type { FormEvent } from 'react';
 import { FocusTimer } from '@/components/focus-timer';
 import InputError from '@/components/input-error';
@@ -27,17 +27,24 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import { ZenThemePicker } from '@/components/zen-theme-picker';
 import { useDocumentTitle } from '@/hooks/use-document-title';
+import { useFullscreen } from '@/hooks/use-fullscreen';
 import { useHotkeys } from '@/hooks/use-hotkeys';
 import { useLiveElapsedSeconds } from '@/hooks/use-live-elapsed-seconds';
-import { requestNotificationPermission } from '@/lib/focus-alerts';
+import { usePhaseAlert } from '@/hooks/use-phase-alert';
+import { useWakeLock } from '@/hooks/use-wake-lock';
+import { useZenTheme } from '@/hooks/use-zen-theme';
+import { notificationsBlocked, prepareAlerts } from '@/lib/focus-alerts';
 import { formatClock, formatDurationMinutes } from '@/lib/format-duration';
 import { ACTIVITY_TYPE_LABEL } from '@/lib/study-labels';
 import { suggestNextStudy } from '@/lib/study-suggestion';
 import { cn } from '@/lib/utils';
+import { zenThemeVars } from '@/lib/zen-themes';
 import {
     advance as advancePhase,
     complete as completeSession,
+    extend as extendPhase,
     pause as pauseSession,
     resume as resumeSession,
     show,
@@ -259,7 +266,9 @@ function StartSessionPanel({
     function submit(event: FormEvent) {
         event.preventDefault();
 
-        requestNotificationPermission();
+        // O clique que inicia a sessão é a janela em que o navegador
+        // libera o som e a permissão de notificação do fim do ciclo.
+        prepareAlerts();
 
         form.transform((data) => ({
             subject_id: data.subject_id || null,
@@ -357,6 +366,16 @@ function ActiveSessionView({
     const paused = pendingPaused ?? session.state === 'paused';
     const onBreak = session.phase !== 'focus';
     const finished = elapsedSeconds >= session.plannedSeconds;
+    const alert = usePhaseAlert(session.state);
+    const { zenTheme, setZenTheme } = useZenTheme();
+
+    // A tela não pode apagar no meio do ciclo — ler ou resolver questão
+    // no papel não gera atividade nenhuma para o sistema.
+    useWakeLock(session.state === 'running');
+
+    // O zen ocupa a tela inteira, e sair da tela cheia (Esc, F11) sai do
+    // zen junto: em tela cheia o Esc nunca chega ao atalho.
+    useFullscreen(zen, () => setZen(false));
 
     const currentSubject = plan.subjects.find(
         (s) => s.id === session.subjectId,
@@ -366,6 +385,10 @@ function ActiveSessionView({
     );
 
     function toggle() {
+        // Retomar (e começar a próxima fase) é gesto do usuário: a única
+        // janela em que o navegador destrava o áudio do aviso.
+        prepareAlerts();
+
         const target = paused ? resumeSession() : pauseSession();
         setPendingPaused(!paused);
         router.post(
@@ -380,10 +403,20 @@ function ActiveSessionView({
     }
 
     function advance(skip = false) {
+        prepareAlerts();
+
         router.post(advancePhase().url, skip ? { skip: true } : {}, {
             preserveScroll: true,
             showProgress: false,
         });
+    }
+
+    function extend() {
+        router.post(
+            extendPhase().url,
+            {},
+            { preserveScroll: true, showProgress: false },
+        );
     }
 
     // Fechar o ciclo quando o tempo acaba é trabalho da barra de sessão
@@ -425,19 +458,38 @@ function ActiveSessionView({
             topicLabel={currentTopic?.name ?? null}
             reviewStatus={currentTopic?.reviewStatus}
             zen={zen}
+            alertPhase={alert?.phase ?? null}
             onToggle={toggle}
             onAdvance={() => advance()}
             onSkipBreak={() => advance(true)}
+            onExtend={extend}
         />
     );
 
     if (zen) {
         return (
-            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-background">
+            <div
+                data-zen-theme={zenTheme.id}
+                style={zenThemeVars(zenTheme)}
+                // O fundo puxa um pouco da cor escolhida no centro: no
+                // zen o cronômetro é a única coisa na tela, e sem isso a
+                // cor tema apareceria só em detalhes de poucos pixels.
+                className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-background bg-[radial-gradient(circle_at_50%_38%,var(--focus-100),var(--background)_62%)]"
+            >
                 {timer}
-                <Button variant="ghost" onClick={() => setZen(false)}>
-                    Sair do modo zen (Esc)
-                </Button>
+
+                <div className="flex flex-col items-center gap-4">
+                    <ZenThemePicker
+                        value={zenTheme.id}
+                        onValueChange={setZenTheme}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        Espaço pausa · E encerra · Esc sai do modo zen
+                    </p>
+                    <Button variant="ghost" onClick={() => setZen(false)}>
+                        Sair do modo zen (Esc)
+                    </Button>
+                </div>
             </div>
         );
     }
@@ -462,6 +514,7 @@ function ActiveSessionView({
                     <p className="text-center text-xs text-muted-foreground">
                         Espaço pausa · F entra no modo zen · E encerra
                     </p>
+                    <BlockedNotificationsHint />
                 </div>
 
                 <div className="flex flex-col gap-5">
@@ -505,6 +558,37 @@ function ActiveSessionView({
                 </div>
             </div>
         </Page>
+    );
+}
+
+/** A permissão não muda sozinha enquanto a tela está aberta. */
+const noopSubscribe = () => () => {};
+
+/**
+ * Notificação negada é um beco sem saída silencioso: a pessoa confia que
+ * o navegador vai chamá-la de volta e ele nunca chama. Dizer isso vale
+ * mais que insistir na permissão, que o navegador não pergunta de novo.
+ *
+ * A leitura passa por `useSyncExternalStore` porque
+ * `Notification.permission` é do navegador e não existe no servidor: o
+ * snapshot do servidor é "não bloqueado" e a verdade chega na hidratação.
+ */
+function BlockedNotificationsHint() {
+    const blocked = useSyncExternalStore(
+        noopSubscribe,
+        notificationsBlocked,
+        () => false,
+    );
+
+    if (!blocked) {
+        return null;
+    }
+
+    return (
+        <p className="text-center text-xs text-status-warning">
+            As notificações estão bloqueadas neste navegador: o fim do ciclo
+            avisa pelo som e pelo título da aba.
+        </p>
     );
 }
 

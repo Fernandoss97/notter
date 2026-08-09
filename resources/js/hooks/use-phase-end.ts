@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useRef } from 'react';
 import { announcePhaseEnd } from '@/lib/focus-alerts';
+import { phaseEndBody, phaseEndTitle, signalPhaseEnd } from '@/lib/phase-alert';
 import { advance as advancePhase } from '@/routes/focus';
 import type { ActiveFocusSession } from '@/types/session';
 
@@ -29,11 +30,12 @@ export function usePhaseEnd(
     const phaseKey = session
         ? `${session.id}:${session.phase}:${session.completedCycles}`
         : null;
-    const onBreak = session ? session.phase !== 'focus' : false;
+    const phase = session?.phase ?? null;
 
     useEffect(() => {
         if (
             !finished ||
+            phase === null ||
             phaseKey === null ||
             advancedFor.current === phaseKey
         ) {
@@ -42,17 +44,18 @@ export function usePhaseEnd(
 
         advancedFor.current = phaseKey;
 
-        announcePhaseEnd(
-            onBreak ? 'Intervalo terminado' : 'Ciclo concluído',
-            onBreak ? 'Hora de voltar ao foco.' : 'Hora de descansar.',
-        );
+        announcePhaseEnd(phaseEndTitle(phase), phaseEndBody(phase));
+        // O aviso na tela vive num store próprio: o avanço logo abaixo
+        // troca a fase, e sem isso o "acabou" desapareceria junto com a
+        // fase que acabou. Ver lib/phase-alert.
+        signalPhaseEnd(phase);
 
         router.post(
             advancePhase().url,
             {},
             { preserveScroll: true, showProgress: false },
         );
-        // `onBreak` deriva da fase, que já está em `phaseKey`.
+        // `phase` já está dentro de `phaseKey`.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [finished, phaseKey]);
 

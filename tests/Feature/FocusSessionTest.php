@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Study\ExtendFocusPhase;
 use App\Models\Enums\ActivityType;
 use App\Models\Enums\FocusPhase;
 use App\Models\Enums\FocusSessionState;
@@ -233,6 +234,49 @@ test('skipping a break returns to focus without waiting for it to end', function
 
     expect($session->refresh()->phase)->toBe(FocusPhase::Focus)
         ->and($session->planned_seconds)->toBe(50 * 60);
+});
+
+test('extending the focus phase buys minutes without closing the cycle', function () {
+    $user = User::factory()->create();
+    StudyPlan::factory()->for($user)->active()->create();
+    $session = StudySession::factory()->for($user)->create([
+        'planned_seconds' => 50 * 60,
+        'completed_cycles' => 1,
+    ]);
+
+    $this->actingAs($user)
+        ->from(route('focus.show'))
+        ->post('/foco/extend')
+        ->assertRedirect(route('focus.show'));
+
+    $session->refresh();
+    expect($session->planned_seconds)->toBe(55 * 60)
+        ->and($session->phase)->toBe(FocusPhase::Focus)
+        ->and($session->completed_cycles)->toBe(1);
+});
+
+test('a break cannot be extended', function () {
+    $user = User::factory()->create();
+    StudyPlan::factory()->for($user)->active()->create();
+    $session = StudySession::factory()->for($user)->onBreak()->create([
+        'planned_seconds' => 10 * 60,
+    ]);
+
+    $this->actingAs($user)->from(route('focus.show'))->post('/foco/extend');
+
+    expect($session->refresh()->planned_seconds)->toBe(10 * 60);
+});
+
+test('a focus phase cannot be extended past the abandoned-session ceiling', function () {
+    $user = User::factory()->create();
+    StudyPlan::factory()->for($user)->active()->create();
+    $session = StudySession::factory()->for($user)->create([
+        'planned_seconds' => ExtendFocusPhase::MAX_PHASE_SECONDS,
+    ]);
+
+    $this->actingAs($user)->from(route('focus.show'))->post('/foco/extend');
+
+    expect($session->refresh()->planned_seconds)->toBe(ExtendFocusPhase::MAX_PHASE_SECONDS);
 });
 
 test('the focus screen reports the phase clock, not the session total', function () {

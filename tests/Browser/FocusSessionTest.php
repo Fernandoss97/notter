@@ -117,6 +117,11 @@ test('the zen mode hides everything but the timer', function () {
         ->assertDontSee('Notas da sessão')
         ->assertNoJavaScriptErrors();
 
+    // A cor tema é escolhida de dentro do próprio zen.
+    $page->click('button[aria-label="Índigo"]')
+        ->assertAttribute('div[data-zen-theme]', 'data-zen-theme', 'indigo')
+        ->assertNoJavaScriptErrors();
+
     $page->click($leaveZen)
         ->assertSee('Notas da sessão')
         ->assertNoJavaScriptErrors();

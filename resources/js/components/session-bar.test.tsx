@@ -1,6 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { clearPhaseAlert } from '@/lib/phase-alert';
 import type { ActiveFocusSession } from '@/types/session';
 import { SessionBar } from './session-bar';
 
@@ -12,7 +13,10 @@ const { usePage, post, announcePhaseEnd } = vi.hoisted(() => ({
 
 vi.mock('@/lib/focus-alerts', () => ({
     announcePhaseEnd,
+    prepareAlerts: vi.fn(),
     requestNotificationPermission: vi.fn(),
+    notificationsBlocked: vi.fn(() => false),
+    unlockAudio: vi.fn(),
 }));
 
 vi.mock('@inertiajs/react', () => ({
@@ -61,6 +65,10 @@ describe('SessionBar', () => {
         vi.restoreAllMocks();
         post.mockReset();
         announcePhaseEnd.mockReset();
+        // O aviso de fim de ciclo vive num store de módulo, fora do
+        // React: sem limpar, o ciclo fechado por um teste continuaria
+        // anunciado no seguinte.
+        clearPhaseAlert();
     });
 
     it('renders no session content when there is no active session', () => {

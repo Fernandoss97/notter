@@ -30,4 +30,14 @@ class InvalidFocusSessionTransitionException extends RuntimeException
     {
         return new self('O ciclo atual ainda não terminou.');
     }
+
+    public static function breakNotExtendable(): self
+    {
+        return new self('Só um ciclo de foco pode ser estendido.');
+    }
+
+    public static function phaseTooLong(): self
+    {
+        return new self('Este ciclo já não pode ser estendido.');
+    }
 }

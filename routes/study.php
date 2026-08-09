@@ -15,6 +15,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('foco/pause', [FocusSessionController::class, 'pause'])->name('focus.pause');
     Route::post('foco/resume', [FocusSessionController::class, 'resume'])->name('focus.resume');
     Route::post('foco/advance', [FocusSessionController::class, 'advance'])->name('focus.advance');
+    Route::post('foco/extend', [FocusSessionController::class, 'extend'])->name('focus.extend');
     Route::post('foco/complete', [FocusSessionController::class, 'complete'])->name('focus.complete');
     Route::post('foco/notes', [FocusSessionController::class, 'notes'])->name('focus.notes');
 

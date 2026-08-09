@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { ReviewStatusBadge } from '@/components/ui/review-status-badge';
 import { formatClock } from '@/lib/format-duration';
+import { phaseEndTitle } from '@/lib/phase-alert';
 import { cn } from '@/lib/utils';
 import type { FocusPhase, ReviewStatus } from '@/types/study';
 
@@ -9,12 +10,6 @@ const PHASE_LABEL: Record<FocusPhase, string> = {
     focus: 'Em foco',
     short_break: 'Intervalo',
     long_break: 'Intervalo longo',
-};
-
-const PHASE_DONE_LABEL: Record<FocusPhase, string> = {
-    focus: 'Ciclo concluído',
-    short_break: 'Intervalo terminado',
-    long_break: 'Intervalo terminado',
 };
 
 export interface FocusTimerProps {
@@ -29,9 +24,17 @@ export interface FocusTimerProps {
     topicLabel: string | null;
     reviewStatus?: ReviewStatus;
     zen?: boolean;
+    /**
+     * A fase que acabou de terminar, enquanto o aviso estiver de pé. Vem
+     * do store de `lib/phase-alert`, não da sessão: quando o aviso
+     * aparece a sessão já está na fase seguinte.
+     */
+    alertPhase?: FocusPhase | null;
     onToggle: () => void;
     onAdvance: () => void;
     onSkipBreak: () => void;
+    /** Estende a fase corrente. Ausente, o botão não aparece. */
+    onExtend?: () => void;
 }
 
 /**
@@ -50,13 +53,23 @@ export function FocusTimer({
     topicLabel,
     reviewStatus,
     zen = false,
+    alertPhase = null,
     onToggle,
     onAdvance,
     onSkipBreak,
+    onExtend,
 }: FocusTimerProps) {
     const onBreak = phase !== 'focus';
     const remainingSeconds = Math.max(0, plannedSeconds - elapsedSeconds);
     const finished = elapsedSeconds >= plannedSeconds;
+    // A fase nasceu pausada e ninguém a começou ainda — é o estado em que
+    // o auto-start desligado deixa o ciclo seguinte. "Retomar" mentiria
+    // sobre o que o botão faz.
+    //
+    // O aviso de fim de ciclo faz parte da condição justamente para não
+    // confundir esse caso com quem pausou nos primeiros segundos: ali o
+    // relógio também está em zero, mas a fase já tinha começado.
+    const notStarted = alertPhase !== null && paused && elapsedSeconds === 0;
     const progress = Math.min(
         100,
         Math.round((elapsedSeconds / plannedSeconds) * 100),
@@ -65,11 +78,14 @@ export function FocusTimer({
     // O verde-água da pausa vale tanto para o intervalo quanto para o foco
     // pausado: os dois são "não está correndo tempo de estudo agora".
     const calm = onBreak || paused;
-    const state = finished
-        ? PHASE_DONE_LABEL[phase]
-        : paused
-          ? 'Pausado'
-          : PHASE_LABEL[phase];
+    const alerting = alertPhase !== null || finished;
+    const state = alertPhase
+        ? phaseEndTitle(alertPhase)
+        : finished
+          ? phaseEndTitle(phase)
+          : paused
+            ? 'Pausado'
+            : PHASE_LABEL[phase];
 
     // Pontos do ciclo pomodoro corrente — quantos foram fechados desde a
     // última pausa longa, não quantas sessões existiram hoje.
@@ -119,6 +135,7 @@ export function FocusTimer({
                     className={cn(
                         'size-1.5 rounded-full transition-colors duration-base ease-out',
                         calm ? 'bg-pausa-500' : 'bg-focus-500',
+                        alerting && 'animate-pulse',
                     )}
                 />
                 {state}
@@ -169,13 +186,34 @@ export function FocusTimer({
                         onClick={onToggle}
                         variant={paused ? 'default' : 'secondary'}
                     >
-                        {paused ? 'Retomar' : 'Pausar'}
+                        {notStarted
+                            ? onBreak
+                                ? 'Começar intervalo'
+                                : 'Começar foco'
+                            : paused
+                              ? 'Retomar'
+                              : 'Pausar'}
                     </Button>
                 )}
 
                 {onBreak && !finished && (
                     <Button variant="ghost" onClick={onSkipBreak}>
                         Pular intervalo
+                    </Button>
+                )}
+
+                {/* Só no foco: esticar um intervalo é adiar o estudo, e o
+                    ciclo pomodoro já tem "pular intervalo" para o caso de
+                    querer voltar antes.
+
+                    E só com o ciclo correndo: no instante em que o tempo
+                    acaba, a barra de sessão já pediu o avanço. Esticar aí
+                    faria o servidor recusar o avanço em voo — e o pedido
+                    recusado não volta a ser tentado, deixando o ciclo sem
+                    quem o feche. */}
+                {onExtend && !onBreak && !finished && (
+                    <Button variant="ghost" onClick={onExtend}>
+                        +5 min
                     </Button>
                 )}
             </div>

@@ -5,8 +5,12 @@ import { Button } from '@/components/ui/button';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { useLiveElapsedSeconds } from '@/hooks/use-live-elapsed-seconds';
+import { usePhaseAlert } from '@/hooks/use-phase-alert';
 import { usePhaseEnd } from '@/hooks/use-phase-end';
+import { useTitleFlash } from '@/hooks/use-title-flash';
+import { prepareAlerts } from '@/lib/focus-alerts';
 import { formatClock } from '@/lib/format-duration';
+import { phaseEndTitle } from '@/lib/phase-alert';
 import { cn } from '@/lib/utils';
 import {
     pause as pauseSession,
@@ -22,6 +26,11 @@ export function SessionBar() {
     // A barra fecha o ciclo de qualquer tela — é a única coisa montada em
     // todas elas.
     const finished = usePhaseEnd(activeSession, elapsedSeconds);
+    const alert = usePhaseAlert(activeSession?.state);
+
+    // O título da aba é o canal que atravessa a aba em segundo plano sem
+    // depender de permissão nenhuma.
+    useTitleFlash(alert ? `⏰ ${phaseEndTitle(alert.phase)}` : null);
 
     // O invólucro fica sempre montado, mesmo sem sessão: é o que permite
     // animar a altura de 0 -> 64px em vez de o conteúdo da página saltar.
@@ -45,6 +54,10 @@ export function SessionBar() {
         : 0;
 
     function toggle() {
+        // Retomar é um gesto do usuário — a única janela em que o
+        // navegador libera o áudio e a permissão de notificação.
+        prepareAlerts();
+
         const target = paused ? resumeSession() : pauseSession();
         setPendingPaused(!paused);
         router.post(
@@ -93,17 +106,18 @@ export function SessionBar() {
                             className={cn(
                                 'size-2.5 transition-colors duration-base ease-out',
                                 calm ? 'bg-pausa-500' : 'bg-focus-500',
+                                (alert || finished) && 'animate-pulse',
                             )}
                         />
-                        {finished
-                            ? onBreak
-                                ? 'Intervalo terminado'
-                                : 'Ciclo concluído'
-                            : paused
-                              ? 'Pausado'
-                              : onBreak
-                                ? 'Intervalo'
-                                : 'Em foco'}
+                        {alert
+                            ? phaseEndTitle(alert.phase)
+                            : finished
+                              ? phaseEndTitle(activeSession.phase)
+                              : paused
+                                ? 'Pausado'
+                                : onBreak
+                                  ? 'Intervalo'
+                                  : 'Em foco'}
                     </span>
                     <span
                         role="timer"

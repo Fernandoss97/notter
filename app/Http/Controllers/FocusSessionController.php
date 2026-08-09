@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Actions\Study\AdvanceFocusPhase;
 use App\Actions\Study\CompleteFocusSession;
 use App\Actions\Study\Exceptions\InvalidFocusSessionTransitionException;
+use App\Actions\Study\ExtendFocusPhase;
 use App\Actions\Study\PauseFocusSession;
 use App\Actions\Study\ResolveCurrentFocusSession;
 use App\Actions\Study\ResumeFocusSession;
@@ -155,6 +156,18 @@ class FocusSessionController extends Controller
         return $this->transition(
             $request,
             fn (StudySession $session) => $action->handle($session, $settings, $skip),
+        );
+    }
+
+    /**
+     * Estica o ciclo de foco corrente em alguns minutos, para o caso de o
+     * tempo acabar no meio de um raciocínio.
+     */
+    public function extend(Request $request, ExtendFocusPhase $action): RedirectResponse
+    {
+        return $this->transition(
+            $request,
+            fn (StudySession $session) => $action->handle($session),
         );
     }
 
