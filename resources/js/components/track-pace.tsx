@@ -114,7 +114,7 @@ function Line({
     return (
         <div className="flex items-baseline gap-2">
             <span className="text-muted-foreground">{label}</span>
-            <span className="font-mono tabular-nums text-foreground">
+            <span className="font-mono text-foreground tabular-nums">
                 {value}
             </span>
             {hint && (

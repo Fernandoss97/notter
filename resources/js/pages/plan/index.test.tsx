@@ -1,11 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type {
-    ActiveStudyPlan,
-    PlanSubject,
-    PlanSummary,
-} from '@/types/study';
+import type { ActiveStudyPlan, PlanSubject, PlanSummary } from '@/types/study';
 import PlanIndex from './index';
 
 const { post, formPost } = vi.hoisted(() => ({
@@ -70,7 +66,7 @@ describe('PlanIndex', () => {
     });
 
     it('offers a way to create another plan when one is already active', async () => {
-        renderPlan([{ id: 1, name: 'Concurso XYZ', isActive: true }]);
+        renderPlan([{ id: 1, name: 'Concurso XYZ' }]);
 
         // Sem isto o primeiro plano criado seria o único possível: o painel de
         // criação só aparece no estado vazio.
@@ -93,7 +89,7 @@ describe('PlanIndex', () => {
     });
 
     it('reopens the new plan dialog empty after a cancel', async () => {
-        renderPlan([{ id: 1, name: 'Concurso XYZ', isActive: true }]);
+        renderPlan([{ id: 1, name: 'Concurso XYZ' }]);
 
         await userEvent.click(
             screen.getByRole('button', { name: 'Novo plano' }),
@@ -120,7 +116,7 @@ describe('PlanIndex', () => {
         );
 
         unmount();
-        renderPlan([{ id: 1, name: 'Concurso XYZ', isActive: true }]);
+        renderPlan([{ id: 1, name: 'Concurso XYZ' }]);
 
         await userEvent.click(screen.getByRole('button', { name: 'Editar' }));
         expect(screen.getByLabelText('Nome do plano')).toHaveAttribute(
@@ -131,8 +127,8 @@ describe('PlanIndex', () => {
 
     it('lets the user switch the active plan once there is more than one', async () => {
         renderPlan([
-            { id: 1, name: 'Concurso XYZ', isActive: true },
-            { id: 2, name: 'Concurso ABC', isActive: false },
+            { id: 1, name: 'Concurso XYZ' },
+            { id: 2, name: 'Concurso ABC' },
         ]);
 
         await userEvent.click(screen.getByText('Concurso ABC'));
@@ -147,8 +143,8 @@ describe('PlanIndex', () => {
 
     it('moves the selection before the server answers', async () => {
         const { container } = renderPlan([
-            { id: 1, name: 'Concurso XYZ', isActive: true },
-            { id: 2, name: 'Concurso ABC', isActive: false },
+            { id: 1, name: 'Concurso XYZ' },
+            { id: 2, name: 'Concurso ABC' },
         ]);
 
         // `router.post` está mockado e nunca chama `onFinish`: a troca fica
@@ -167,8 +163,8 @@ describe('PlanIndex', () => {
 
     it('announces the wait once it becomes perceptible', async () => {
         const { container } = renderPlan([
-            { id: 1, name: 'Concurso XYZ', isActive: true },
-            { id: 2, name: 'Concurso ABC', isActive: false },
+            { id: 1, name: 'Concurso XYZ' },
+            { id: 2, name: 'Concurso ABC' },
         ]);
 
         await userEvent.click(screen.getByText('Concurso ABC'));
@@ -188,9 +184,9 @@ describe('PlanIndex', () => {
 
     it('keeps the newest switch pending when an older one settles', async () => {
         renderPlan([
-            { id: 1, name: 'Concurso XYZ', isActive: true },
-            { id: 2, name: 'Concurso ABC', isActive: false },
-            { id: 3, name: 'Concurso DEF', isActive: false },
+            { id: 1, name: 'Concurso XYZ' },
+            { id: 2, name: 'Concurso ABC' },
+            { id: 3, name: 'Concurso DEF' },
         ]);
 
         await userEvent.click(screen.getByText('Concurso ABC'));

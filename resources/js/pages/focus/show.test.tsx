@@ -234,9 +234,9 @@ describe('FocusShow', () => {
 
         // A trilha apontaria para Álgebra Linear (posição 0, em aberto); a
         // fila de revisões é quem manda quando há revisão devida.
-        expect(screen.getByLabelText('Disciplina (opcional)')).toHaveTextContent(
-            'Estatística',
-        );
+        expect(
+            screen.getByLabelText('Disciplina (opcional)'),
+        ).toHaveTextContent('Estatística');
     });
 
     it('lets the review queue speak up during a break', () => {

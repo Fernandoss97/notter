@@ -51,6 +51,33 @@ test('the progress screen shows the week, the streak and the last seven days', f
         ->assertNoJavaScriptErrors();
 });
 
+test('the progress screen switches between plans', function () {
+    $user = User::factory()->create();
+    $xyz = StudyPlan::factory()->for($user)->active()->create(['name' => 'Concurso XYZ']);
+    $abc = StudyPlan::factory()->for($user)->create(['name' => 'Concurso ABC']);
+
+    Topic::factory()->for(Subject::factory()->for($xyz)->create(['name' => 'Álgebra Linear']))->create();
+    Topic::factory()->for(Subject::factory()->for($abc)->create(['name' => 'Direito Penal']))->create();
+
+    $page = visit('/login')
+        ->fill('email', $user->email)
+        ->fill('password', 'password')
+        ->click('Log in')
+        ->assertPathIs('/foco')
+        ->assertNoJavaScriptErrors();
+
+    $page->hover('[data-slot="sidebar"]')
+        ->click('Progresso')
+        ->assertPathIs('/dashboard')
+        ->assertSee('Álgebra Linear')
+        ->assertNoJavaScriptErrors();
+
+    $page->click('[data-slot="segmented-control"] button:text-is("Concurso ABC")')
+        ->assertSee('Direito Penal')
+        ->assertDontSee('Álgebra Linear')
+        ->assertNoJavaScriptErrors();
+});
+
 test('the progress screen counts down to the exam and compares the paces', function () {
     $user = User::factory()->create();
     $plan = StudyPlan::factory()->for($user)->active()->create([
