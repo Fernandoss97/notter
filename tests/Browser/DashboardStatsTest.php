@@ -73,6 +73,8 @@ test('the progress screen switches between plans', function () {
         ->assertNoJavaScriptErrors();
 
     $page->click('[data-slot="segmented-control"] button:text-is("Concurso ABC")')
+        // Trocar de plano não pode tirar o usuário da tela em que ele está.
+        ->assertPathIs('/dashboard')
         ->assertSee('Direito Penal')
         ->assertDontSee('Álgebra Linear')
         ->assertNoJavaScriptErrors();

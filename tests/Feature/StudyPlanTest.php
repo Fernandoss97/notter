@@ -127,6 +127,21 @@ test('updating a plan requires ownership', function () {
         ->assertForbidden();
 });
 
+test('activating a plan returns to the screen it was triggered from', function () {
+    $user = User::factory()->create();
+    StudyPlan::factory()->for($user)->active()->create();
+    $other = StudyPlan::factory()->for($user)->create();
+
+    // O seletor de plano vive em quatro telas; quem troca a partir da
+    // trilha continua na trilha.
+    $this->actingAs($user)
+        ->from(route('track.index'))
+        ->post("/plano/{$other->id}/activate")
+        ->assertRedirect(route('track.index'));
+
+    expect($other->refresh()->is_active)->toBeTrue();
+});
+
 test('activating a plan requires ownership', function () {
     $user = User::factory()->create();
     $foreignPlan = StudyPlan::factory()->create();

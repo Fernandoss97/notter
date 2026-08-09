@@ -17,9 +17,9 @@ test('a user can wipe the study data and keep the account', function () {
         ->assertPathIs('/foco')
         ->assertNoJavaScriptErrors();
 
-    // O item do usuário na sidebar é a porta de entrada das configurações.
+    // "Configurações" na sidebar é a porta de entrada.
     $page->hover('[data-slot="sidebar"]')
-        ->click($user->name)
+        ->click('Configurações')
         ->assertPathIs('/settings/profile')
         ->assertSee('Apagar dados de estudo')
         ->assertNoJavaScriptErrors();
