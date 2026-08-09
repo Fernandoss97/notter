@@ -129,15 +129,6 @@ export type RecentDay = {
     minutes: number;
 };
 
-export type DashboardSubject = {
-    id: number;
-    name: string;
-    topicsDone: number;
-    topicsTotal: number;
-    progress: number;
-    reviewStatus: ReviewStatus;
-};
-
 export type SubjectEvolutionRow = {
     id: number;
     name: string;
