@@ -30,6 +30,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('plano/topics/{topic}/questoes', [TopicController::class, 'exercises'])->name('topics.exercises');
 
     Route::get('trilha', [StudyTrackController::class, 'index'])->name('track.index');
+    Route::post('trilha/importar', [StudyTrackController::class, 'import'])->name('track.import');
 
     Route::post('revisoes/{review}/complete', [ReviewController::class, 'complete'])->name('reviews.complete');
 
