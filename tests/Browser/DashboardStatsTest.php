@@ -40,7 +40,45 @@ test('the progress screen shows the week, the streak and the last seven days', f
         ->assertSee('Últimos 7 dias')
         ->assertNoJavaScriptErrors();
 
-    // O que virou duplicata saiu daqui e ficou onde já morava.
-    $page->assertDontSee('Álgebra Linear')
-        ->assertDontSee('Histórico de sessões');
+    // Sessão por sessão continua sendo assunto do histórico.
+    $page->assertDontSee('Histórico de sessões');
+
+    // Disciplina por disciplina voltou — não como repetição do plano, mas
+    // pelo acerto em questões, que não aparece em nenhuma outra tela.
+    $page->assertSee('Evolução por disciplina')
+        ->assertSee('Álgebra Linear')
+        ->assertSee('Desempenho')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the evolution reports the accuracy of each subject and the totals', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+    $database = Subject::factory()->for($plan)->create(['name' => 'Banco de Dados']);
+    $portuguese = Subject::factory()->for($plan)->create(['name' => 'Português']);
+
+    Topic::factory()->for($database)->completed()->create([
+        'exercises_total' => 40,
+        'exercises_correct' => 30,
+    ]);
+    Topic::factory()->for($portuguese)->create([
+        'exercises_total' => 10,
+        'exercises_correct' => 4,
+    ]);
+
+    $page = visit('/login')
+        ->fill('email', $user->email)
+        ->fill('password', 'password')
+        ->click('Log in')
+        ->assertPathIs('/foco')
+        ->assertNoJavaScriptErrors();
+
+    $page->hover('[data-slot="sidebar"]')
+        ->click('Progresso')
+        ->assertPathIs('/dashboard')
+        ->assertSee('75%')
+        ->assertSee('40%')
+        ->assertSee('Totais')
+        ->assertSee('68%')
+        ->assertNoJavaScriptErrors();
 });

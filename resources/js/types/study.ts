@@ -138,6 +138,23 @@ export type DashboardSubject = {
     reviewStatus: ReviewStatus;
 };
 
+export type SubjectEvolutionRow = {
+    id: number;
+    name: string;
+    tasksDone: number;
+    tasksTotal: number;
+    progress: number;
+    exercises: number;
+    correct: number;
+    /** Percentual de acerto, ou null quando não há questão resolvida. */
+    accuracy: number | null;
+};
+
+export type SubjectEvolution = {
+    rows: SubjectEvolutionRow[];
+    totals: Omit<SubjectEvolutionRow, 'id' | 'name'>;
+};
+
 export type RecentSession = {
     date: string;
     subject: string;

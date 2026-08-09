@@ -1,3 +1,4 @@
+import { accuracyColor } from '@/lib/accuracy';
 import { cn } from '@/lib/utils';
 
 export interface SessionRow {
@@ -7,18 +8,6 @@ export interface SessionRow {
     type: string;
     exercises: number | null;
     accuracy: number | null;
-}
-
-function accuracyColor(accuracy: number | null): string {
-    if (accuracy === null) {
-        return 'text-muted-foreground';
-    }
-
-    if (accuracy >= 70) {
-        return 'text-status-success';
-    }
-
-    return accuracy >= 50 ? 'text-status-warning' : 'text-status-danger';
 }
 
 export function SessionsTable({ rows }: { rows: SessionRow[] }) {
