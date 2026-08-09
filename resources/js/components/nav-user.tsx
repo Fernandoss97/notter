@@ -41,9 +41,12 @@ export function NavUser() {
                     tooltip="Configurações"
                     data-test="sidebar-menu-button"
                 >
+                    {/* O rótulo é o destino, não quem está logado: o item
+                        leva às configurações, e o nome do usuário já está
+                        na primeira tela de lá. */}
                     <Link href={editProfile()} prefetch onClick={cleanup}>
                         <Settings />
-                        <span>{auth.user.name}</span>
+                        <span>Configurações</span>
                     </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>

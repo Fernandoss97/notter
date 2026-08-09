@@ -56,13 +56,19 @@ class StudyPlanController extends Controller
         return to_route('plans.index');
     }
 
+    /**
+     * Volta para a tela de onde a troca partiu. O seletor de plano vive em
+     * quatro telas: mandar todas para o plano tiraria o usuário de onde ele
+     * estava justamente para mostrar os números do plano que ele acabou de
+     * escolher.
+     */
     public function activate(Request $request, StudyPlan $plan, ActivateStudyPlan $action): RedirectResponse
     {
         abort_unless($plan->user_id === $request->user()->id, 403);
 
         $action->handle($plan);
 
-        return to_route('plans.index');
+        return back();
     }
 
     public function update(UpdateStudyPlanRequest $request, StudyPlan $plan): RedirectResponse

@@ -17,9 +17,10 @@ test('the sidebar shows the product navigation and marks focus as active', funct
         ->assertSee('Progresso')
         ->assertSee('Plano de estudos')
         ->assertSee('Histórico')
-        // O rodapé agora traz o próprio usuário (atalho para as configurações)
-        // e a saída, sem menu suspenso.
-        ->assertSee($user->name)
+        // O rodapé traz o atalho das configurações e a saída, sem menu
+        // suspenso — e nomeia o destino, não quem está logado.
+        ->assertSee('Configurações')
+        ->assertDontSee($user->name)
         ->assertSee('Sair')
         ->assertNoJavaScriptErrors();
 

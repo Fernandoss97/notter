@@ -63,10 +63,12 @@ function renderNavUser() {
 }
 
 describe('NavUser', () => {
-    it('mostra o usuário e o sair direto na sidebar, sem dropdown', () => {
+    it('mostra as configurações e o sair direto na sidebar, sem dropdown', () => {
         renderNavUser();
 
-        expect(screen.getByText('Fernando')).toBeInTheDocument();
+        // O rótulo nomeia o destino, não quem está logado.
+        expect(screen.getByText('Configurações')).toBeInTheDocument();
+        expect(screen.queryByText('Fernando')).not.toBeInTheDocument();
         expect(screen.getByText('Sair')).toBeInTheDocument();
         expect(screen.queryByRole('menu')).not.toBeInTheDocument();
         expect(
@@ -74,13 +76,12 @@ describe('NavUser', () => {
         ).toBeNull();
     });
 
-    it('leva o item do usuário para as configurações', () => {
+    it('leva o item das configurações para o perfil', () => {
         renderNavUser();
 
-        expect(screen.getByRole('link', { name: 'Fernando' })).toHaveAttribute(
-            'href',
-            '/settings/profile',
-        );
+        expect(
+            screen.getByRole('link', { name: 'Configurações' }),
+        ).toHaveAttribute('href', '/settings/profile');
     });
 
     it('não renderiza nada quando não há usuário autenticado', () => {
