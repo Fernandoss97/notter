@@ -18,15 +18,23 @@
     --radius-lg: 20px;
 
     /* Escala tipográfica Notter — sobrescreve os defaults do Tailwind.
-       `text-md` (17px) é um degrau extra que o Tailwind não tem. */
+       `text-md` (18px) é um degrau extra que o Tailwind não tem.
+
+       Os degraus de corpo (`sm`, `base`) valem exatamente o default do
+       Tailwind de propósito: todo componente shadcn do projeto — botão,
+       input, select, label, dropdown, sidebar — fixa `text-sm`, e foi
+       desenhado assumindo 14px. Encolher esse degrau encolhia o app
+       inteiro junto, um passo abaixo da proporção para a qual os
+       controles foram feitos. Os títulos (`lg` para cima) continuam
+       maiores que o default; é o contraste de hierarquia daqui. */
     --text-xs: 12px;
     --text-xs--line-height: 16px;
-    --text-sm: 13px;
-    --text-sm--line-height: 18px;
-    --text-base: 15px;
-    --text-base--line-height: 22px;
-    --text-md: 17px;
-    --text-md--line-height: 24px;
+    --text-sm: 14px;
+    --text-sm--line-height: 20px;
+    --text-base: 16px;
+    --text-base--line-height: 24px;
+    --text-md: 18px;
+    --text-md--line-height: 26px;
     --text-lg: 20px;
     --text-lg--line-height: 28px;
     --text-xl: 26px;

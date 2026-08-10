@@ -560,7 +560,7 @@ function SubjectRow({
                     // Eco do tópico recém-digitado, no lugar em que ele vai
                     // nascer, enquanto o servidor confirma.
                     <div className="flex items-center gap-3 rounded-sm px-2 py-1.5 opacity-60">
-                        <div className="size-4 shrink-0 rounded-[4px] border border-border-strong" />
+                        <div className="size-5 shrink-0 rounded-[4px] border border-border-strong" />
                         <span className="flex-1 text-sm text-foreground">
                             {pendingTopic}
                         </span>
@@ -618,7 +618,7 @@ function TopicRow({
                         : `Marcar ${topic.name} como concluído`
                 }
                 className={cn(
-                    'flex size-4 shrink-0 items-center justify-center rounded-[4px] border text-[11px]',
+                    'flex size-5 shrink-0 items-center justify-center rounded-[4px] border text-xs',
                     'transition-[background-color,border-color,color,box-shadow,scale] duration-fast ease-out',
                     'outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
                     'active:scale-90 active:duration-instant',

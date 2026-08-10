@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import { ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
 import { useState } from 'react';
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { Page } from '@/components/page';
 import { PageHeader } from '@/components/page-header';
 import { Panel } from '@/components/panel';
@@ -97,9 +98,7 @@ export default function CycleIndex({
                         }
                         actions={
                             <>
-                                <InterleaveButton
-                                    visible={active.length > 2}
-                                />
+                                <InterleaveButton visible={active.length > 2} />
                                 <TrimDialog activeCount={active.length} />
                                 <Button variant="outline" asChild>
                                     <Link href={showFocus()}>
@@ -120,7 +119,10 @@ export default function CycleIndex({
                 <ClashHint clashes={clashes} />
 
                 <CoreHint
-                    visible={active.length > 0 && active.length < cycle.recommendedCore}
+                    visible={
+                        active.length > 0 &&
+                        active.length < cycle.recommendedCore
+                    }
                     active={active.length}
                     recommended={cycle.recommendedCore}
                 />
@@ -137,7 +139,7 @@ export default function CycleIndex({
                     key={plan.id}
                 >
                     <Panel title={`Volta ${cycle.lap}`} pad={false}>
-                        <div className="stagger-children flex flex-col gap-1.5 p-3">
+                        <div className="stagger-children flex flex-col gap-2 p-4">
                             {cycle.slots.map((slot, position) => (
                                 <SlotRow
                                     key={slot.id}
@@ -166,7 +168,8 @@ function NoPlanPanel() {
         <Panel title="Ciclo de estudos">
             <p className="text-sm text-fg-2">
                 O ciclo é o rodízio das disciplinas do plano ativo — quem vem
-                agora, e por quanto tempo. Crie um plano de estudos para montá-lo.
+                agora, e por quanto tempo. Crie um plano de estudos para
+                montá-lo.
             </p>
             <Button asChild className="w-fit">
                 <Link href={planIndex()}>Criar plano de estudos</Link>
@@ -226,7 +229,9 @@ function ClashHint({ clashes }: { clashes: string[] }) {
             className={cn('text-sm text-fg-2', !visible && 'hidden')}
         >
             {clashes.join('; ')}{' '}
-            {clashes.length === 1 ? 'são da mesma área' : 'são das mesmas áreas'}{' '}
+            {clashes.length === 1
+                ? 'são da mesma área'
+                : 'são das mesmas áreas'}{' '}
             e estão em sequência. Alternar áreas diferentes descansa a
             concentração — "Intercalar áreas" reorganiza a fila.
         </p>
@@ -256,9 +261,9 @@ function CoreHint({
             hidden={!visible}
             className={cn('text-sm text-fg-2', !visible && 'hidden')}
         >
-            Para a sua carga horária, o método sugere começar com{' '}
-            {recommended} disciplinas — você tem {active}. É sugestão, não
-            regra: o ciclo funciona com o que couber na sua semana.
+            Para a sua carga horária, o método sugere começar com {recommended}{' '}
+            disciplinas — você tem {active}. É sugestão, não regra: o ciclo
+            funciona com o que couber na sua semana.
         </p>
     );
 }
@@ -425,42 +430,53 @@ function SlotRow({
             data-slot="cycle-slot"
             data-current={slot.isCurrent || undefined}
             className={cn(
-                'flex flex-col gap-2 rounded-sm px-2 py-2 transition-colors duration-fast ease-out hover:bg-muted',
+                // Grade de duas colunas em vez de um recuo calculado à mão:
+                // os controles caem sob o nome porque compartilham a coluna
+                // com ele, e nada quebra quando a coluna das setas muda de
+                // largura.
+                //
+                // `minmax(0,1fr)`, não `1fr`: uma trilha `1fr` não encolhe
+                // abaixo do conteúdo, e a faixa de controles empurrava a
+                // linha para fora do painel — a página ganhava rolagem
+                // horizontal e nunca parava de se reacomodar.
+                'grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 rounded-sm px-3 py-3 transition-colors duration-fast ease-out hover:bg-muted',
                 slot.isCurrent && 'bg-muted',
                 paused && 'opacity-60',
             )}
         >
-            <div className="flex items-center gap-3">
-                <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-0.5">
                     <ReorderButton
                         label={`Mover ${slot.subjectName} para cima`}
                         disabled={position === 0}
                         onClick={() => move(-1)}
                     >
-                        ▲
+                        <ChevronUpIcon className="size-4" />
                     </ReorderButton>
                     <ReorderButton
                         label={`Mover ${slot.subjectName} para baixo`}
                         disabled={position === slots.length - 1}
                         onClick={() => move(1)}
                     >
-                        ▼
+                        <ChevronDownIcon className="size-4" />
                     </ReorderButton>
                 </div>
 
-                <span className="w-6 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+                <span className="w-5 shrink-0 text-right text-sm text-muted-foreground tabular-nums">
                     {position + 1}
                 </span>
+            </div>
 
+            <div className="flex min-w-0 items-center gap-3">
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <div className="flex items-center gap-2">
-                        <span className="truncate text-sm text-foreground">
+                        <span className="truncate text-md font-semibold text-foreground">
                             {slot.subjectName}
                         </span>
                         <StatusBadge slot={slot} />
                         {slot.boosted && <Badge tone="focus">Imersão</Badge>}
                     </div>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-sm text-muted-foreground">
                         {block
                             ? `${formatDurationMinutes(Math.floor(block.elapsedSeconds / 60))} de ${formatDurationMinutes(block.targetMinutes)}`
                             : `${formatDurationMinutes(slot.effectiveBlockMinutes)} por bloco · fora do rodízio`}
@@ -470,7 +486,7 @@ function SlotRow({
                 </div>
 
                 {block && (
-                    <div className="w-32 shrink-0">
+                    <div className="w-36 shrink-0">
                         <ProgressBar
                             value={block.progressPercent}
                             color={block.completed ? 'success' : 'focus'}
@@ -479,18 +495,17 @@ function SlotRow({
                 )}
             </div>
 
-            {/* Os controles ficam alinhados sob o nome, com o mesmo recuo
-                das setas e do número. Deixá-los disputar a primeira faixa
-                achatava a coluna do nome — a única informação que a linha
-                existe para dar. */}
-            <div className="flex flex-wrap items-center gap-1 pl-[3.25rem]">
+            {/* Os controles ficam alinhados sob o nome. Deixá-los disputar
+                a primeira faixa achatava a coluna do nome — a única
+                informação que a linha existe para dar. */}
+            <div className="col-start-2 flex min-w-0 flex-wrap items-center gap-2">
                 <SubjectFieldSelect
                     slot={slot}
                     field="area"
                     value={slot.subjectArea}
                     labels={SUBJECT_AREA_LABEL}
                     label={`Área de ${slot.subjectName}`}
-                    width="w-32"
+                    width="w-36"
                 />
                 <SubjectFieldSelect
                     slot={slot}
@@ -498,17 +513,16 @@ function SlotRow({
                     value={slot.subjectMode}
                     labels={SUBJECT_MODE_LABEL}
                     label={`Situação de ${slot.subjectName}`}
-                    width="w-28"
+                    width="w-32"
                 />
                 {slot.isCurrent && (
-                    <Button variant="ghost" size="sm" asChild>
+                    <Button variant="ghost" asChild>
                         <Link href={showFocus()}>Estudar</Link>
                     </Button>
                 )}
                 {slot.isCurrent && block && !block.completed && (
                     <Button
                         variant="ghost"
-                        size="sm"
                         onClick={() =>
                             router.post(
                                 completeBlock(block.id).url,
@@ -526,6 +540,10 @@ function SlotRow({
     );
 }
 
+/**
+ * Alvo de 24px, o mínimo do WCAG 2.5.8: os 14x16px de antes eram menores
+ * que o próprio ponteiro do mouse.
+ */
 function ReorderButton({
     label,
     disabled,
@@ -535,7 +553,7 @@ function ReorderButton({
     label: string;
     disabled: boolean;
     onClick: () => void;
-    children: string;
+    children: ReactNode;
 }) {
     return (
         <button
@@ -544,7 +562,7 @@ function ReorderButton({
             disabled={disabled}
             onClick={onClick}
             className={cn(
-                'flex h-3.5 w-4 items-center justify-center rounded-[3px] text-[8px] text-muted-foreground',
+                'flex size-6 items-center justify-center rounded-sm text-muted-foreground',
                 'transition-[color,background-color,scale] duration-fast ease-out',
                 'outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
                 'hover:bg-border-strong hover:text-foreground',
@@ -597,7 +615,7 @@ function SubjectFieldSelect<T extends string>({
 
     return (
         <Select value={current} onValueChange={change}>
-            <SelectTrigger size="sm" aria-label={label} className={width}>
+            <SelectTrigger aria-label={label} className={width}>
                 <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -639,9 +657,10 @@ function Badge({
     return (
         <span
             className={cn(
-                'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase',
+                'shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold tracking-wide uppercase',
                 tone === 'muted' && 'bg-muted text-muted-foreground',
-                tone === 'success' && 'bg-status-success/15 text-status-success',
+                tone === 'success' &&
+                    'bg-status-success/15 text-status-success',
                 tone === 'focus' && 'bg-focus-500/15 text-focus-500',
             )}
         >
@@ -688,11 +707,9 @@ function SlotSettings({ slot }: { slot: CycleSlotSummary }) {
                     step={5}
                     value={minutes}
                     onChange={(event) => setMinutes(event.target.value)}
-                    className="h-8 w-20"
+                    className="w-24"
                 />
-                <Button type="submit" size="sm">
-                    Salvar
-                </Button>
+                <Button type="submit">Salvar</Button>
             </form>
         );
     }
@@ -701,7 +718,6 @@ function SlotSettings({ slot }: { slot: CycleSlotSummary }) {
         <>
             <Button
                 variant="ghost"
-                size="sm"
                 aria-label={`Ajustar o bloco de ${slot.subjectName}`}
                 onClick={() => setEditing(true)}
             >
@@ -709,7 +725,6 @@ function SlotSettings({ slot }: { slot: CycleSlotSummary }) {
             </Button>
             <Button
                 variant="ghost"
-                size="sm"
                 aria-label={
                     paused
                         ? `Devolver ${slot.subjectName} ao rodízio`
@@ -721,7 +736,6 @@ function SlotSettings({ slot }: { slot: CycleSlotSummary }) {
             </Button>
             <Button
                 variant="ghost"
-                size="sm"
                 aria-label={`Remover ${slot.subjectName} do ciclo`}
                 onClick={() =>
                     router.delete(destroySlot(slot.id).url, {
@@ -735,7 +749,11 @@ function SlotSettings({ slot }: { slot: CycleSlotSummary }) {
     );
 }
 
-function AddSlotPanel({ subjects }: { subjects: { id: number; name: string }[] }) {
+function AddSlotPanel({
+    subjects,
+}: {
+    subjects: { id: number; name: string }[];
+}) {
     const form = useForm({
         subject_id: '',
         block_minutes: '60',
@@ -815,7 +833,10 @@ function AddSlotPanel({ subjects }: { subjects: { id: number; name: string }[] }
                             step={5}
                             value={form.data.block_minutes}
                             onChange={(event) =>
-                                form.setData('block_minutes', event.target.value)
+                                form.setData(
+                                    'block_minutes',
+                                    event.target.value,
+                                )
                             }
                         />
                         {form.errors.block_minutes && (
@@ -832,7 +853,7 @@ function AddSlotPanel({ subjects }: { subjects: { id: number; name: string }[] }
                             onChange={(event) =>
                                 form.setData('boost', event.target.checked)
                             }
-                            className="size-4 rounded-[4px] border-border-strong accent-focus-500"
+                            className="size-5 rounded-[4px] border-border-strong accent-focus-500"
                         />
                         Imersão inicial
                     </label>
@@ -853,8 +874,8 @@ function AddSlotPanel({ subjects }: { subjects: { id: number; name: string }[] }
                     >
                         Matéria nova ganha 30 minutos a mais por bloco durante
                         duas semanas. O reforço é somado por cima da duração
-                        escolhida e some sozinho no fim do prazo — assim ele
-                        não vira uma prioridade eterna que ninguém lembra de
+                        escolhida e some sozinho no fim do prazo — assim ele não
+                        vira uma prioridade eterna que ninguém lembra de
                         desfazer.
                     </p>
 

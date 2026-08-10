@@ -43,6 +43,7 @@ import { ACTIVITY_TYPE_LABEL } from '@/lib/study-labels';
 import { suggestNextStudy } from '@/lib/study-suggestion';
 import { cn } from '@/lib/utils';
 import { zenThemeVars } from '@/lib/zen-themes';
+import { index as showCycle } from '@/routes/cycle';
 import {
     advance as advancePhase,
     complete as completeSession,
@@ -52,7 +53,6 @@ import {
     show,
     start as startSession,
 } from '@/routes/focus';
-import { index as showCycle } from '@/routes/cycle';
 import { index as showPlan } from '@/routes/plans';
 import type {
     ActivityType,
@@ -332,7 +332,12 @@ function CurrentBlockPanel({ block }: { block: CycleBlockSummary | null }) {
                             faltam{' '}
                             {formatDurationMinutes(block.remainingMinutes)}
                         </p>
-                        <Button variant="ghost" size="sm" asChild className="w-fit">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            asChild
+                            className="w-fit"
+                        >
                             <Link href={showCycle()}>Ver o ciclo</Link>
                         </Button>
                     </>

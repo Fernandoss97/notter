@@ -42,7 +42,7 @@ function SegmentedControl({
           value={option.value}
           data-slot="segmented-control-item"
           className={cn(
-            "rounded-[6px] px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-muted-foreground",
+            "rounded-[6px] px-3 py-2 text-sm font-semibold whitespace-nowrap text-muted-foreground",
             // Crossfade do item selecionado em vez de troca seca. Um thumb
             // deslizante exigiria medir posições em JS — custo alto para o
             // pouco que comunicaria a mais.

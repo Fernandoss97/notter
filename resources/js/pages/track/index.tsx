@@ -326,7 +326,7 @@ function TaskRow({ task }: { task: TrackTask }) {
                         : `Marcar ${task.name} como concluída`
                 }
                 className={cn(
-                    'flex size-4 shrink-0 items-center justify-center rounded-[4px] border text-[11px]',
+                    'flex size-5 shrink-0 items-center justify-center rounded-[4px] border text-xs',
                     'transition-[background-color,border-color,color,box-shadow,scale] duration-fast ease-out',
                     'outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
                     'active:scale-90 active:duration-instant',
