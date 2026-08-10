@@ -49,7 +49,7 @@ test('interleaving separates subjects of the same family', function () {
         'RLM' => SubjectArea::Exact,
     ]);
 
-    (new SuggestCycleOrder)->handle($plan);
+    app(SuggestCycleOrder::class)->handle($plan);
 
     $order = cycleOrder($plan);
     $areas = $plan->cycleSlots()->with('subject')->get()
@@ -70,7 +70,7 @@ test('the biggest family goes first, so it does not pile up at the end', functio
         'Penal' => SubjectArea::Law,
     ]);
 
-    (new SuggestCycleOrder)->handle($plan);
+    app(SuggestCycleOrder::class)->handle($plan);
 
     expect(cycleOrder($plan)[0])->toBe('Constitucional');
 });
@@ -82,7 +82,7 @@ test('when there is no alternative the repetition goes in anyway', function () {
         'Penal' => SubjectArea::Law,
     ]);
 
-    (new SuggestCycleOrder)->handle($plan);
+    app(SuggestCycleOrder::class)->handle($plan);
 
     // Uma sugestão que falhasse seria pior que uma sugestão imperfeita.
     expect(cycleOrder($plan))->toHaveCount(3);
@@ -95,7 +95,7 @@ test('unlabelled subjects are never treated as a family', function () {
         'Português' => SubjectArea::Languages,
     ]);
 
-    (new SuggestCycleOrder)->handle($plan);
+    app(SuggestCycleOrder::class)->handle($plan);
 
     expect(cycleOrder($plan))->toHaveCount(3);
 });
@@ -111,7 +111,7 @@ test('seats out of the rotation go to the end, keeping their order', function ()
         'position' => 99,
     ]);
 
-    (new SuggestCycleOrder)->handle($plan);
+    app(SuggestCycleOrder::class)->handle($plan);
 
     expect(cycleOrder($plan))->toBe(['Constitucional', 'Português', 'Fora'])
         ->and($paused->refresh()->position)->toBe(2);
@@ -120,7 +120,7 @@ test('seats out of the rotation go to the end, keeping their order', function ()
 test('interleaving a rotation of one changes nothing', function () {
     $plan = cycleWithAreas(['Constitucional' => SubjectArea::Law]);
 
-    (new SuggestCycleOrder)->handle($plan);
+    app(SuggestCycleOrder::class)->handle($plan);
 
     expect(cycleOrder($plan))->toBe(['Constitucional']);
 });

@@ -85,7 +85,7 @@ class CycleController extends Controller
      * há vez.
      *
      * @param  Collection<int, CycleSlot>  $slots
-     * @return array<int, array{id: int, subjectId: int, subjectName: string, subjectMode: string, subjectArea: string, blockMinutes: int, boosted: bool, state: string, isCurrent: bool, block: array<string, mixed>|null}>
+     * @return array<int, array{id: int, subjectId: int, subjectName: string, subjectMode: string, subjectArea: string, blockMinutes: int, effectiveBlockMinutes: int, boosted: bool, state: string, isCurrent: bool, block: array<string, mixed>|null}>
      */
     private function slotProps(Collection $slots, ?CycleBlock $currentBlock, ?StudySession $session): array
     {
@@ -108,6 +108,10 @@ class CycleController extends Controller
                 'subjectMode' => $slot->subject->mode->value,
                 'subjectArea' => $slot->subject->area->value,
                 'blockMinutes' => $slot->block_minutes,
+                // O que o bloco vale hoje, já com o reforço somado: é esse
+                // o número que a linha precisa mostrar, senão a imersão
+                // seria um selo sem efeito visível.
+                'effectiveBlockMinutes' => $slot->effectiveBlockMinutes(),
                 'boosted' => $slot->isBoosted(),
                 'state' => $slot->state->value,
                 'isCurrent' => $block instanceof CycleBlock

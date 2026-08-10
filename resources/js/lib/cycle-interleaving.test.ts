@@ -14,6 +14,7 @@ function slot(
         subjectMode: 'reading',
         subjectArea: area,
         blockMinutes: 60,
+        effectiveBlockMinutes: 60,
         boosted: false,
         state,
         isCurrent: false,

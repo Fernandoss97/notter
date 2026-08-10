@@ -44,6 +44,18 @@ class CycleSlot extends Model
 
     public const MAX_BLOCK_MINUTES = 120;
 
+    /**
+     * Quanto a imersão inicial acrescenta ao bloco enquanto vale (§4).
+     *
+     * O reforço é *somado* na hora de abrir a volta, e não gravado em
+     * `block_minutes`. É o que faz a promessa se cumprir sozinha: quando a
+     * data passa, o peso vai junto, sem depender de alguém lembrar de
+     * desfazer. Gravado, ele seria de novo uma prioridade eterna — a
+     * mesma coisa que aposentou `subjects.priority` neste projeto, só que
+     * pior, porque sem selo na tela para denunciá-la.
+     */
+    public const BOOST_EXTRA_MINUTES = 30;
+
     protected $attributes = [
         'position' => 0,
         'block_minutes' => self::MIN_BLOCK_MINUTES,
@@ -115,8 +127,22 @@ class CycleSlot extends Model
         return $this->state === CycleSlotState::Active;
     }
 
+    /**
+     * Os minutos que o bloco vale hoje: a duração escolhida, mais o
+     * reforço enquanto ele estiver de pé. `block_minutes` continua
+     * significando "o que essa disciplina pede normalmente" — o reforço é
+     * uma camada por cima, com prazo.
+     */
+    public function effectiveBlockMinutes(): int
+    {
+        return min(
+            self::MAX_BLOCK_MINUTES,
+            $this->block_minutes + ($this->isBoosted() ? self::BOOST_EXTRA_MINUTES : 0)
+        );
+    }
+
     public function targetSeconds(): int
     {
-        return $this->block_minutes * 60;
+        return $this->effectiveBlockMinutes() * 60;
     }
 }

@@ -185,6 +185,13 @@ O reforço de matéria nova é uma **data de validade** (`boost_until`, duas
 semanas), não um sinalizador de prioridade: um peso declarado sem prazo
 nunca é revisto, que foi exatamente o que condenou `subjects.priority`.
 
+E o reforço é **somado na hora de abrir a volta**, nunca gravado em
+`block_minutes` — `CycleSlot::effectiveBlockMinutes()` acrescenta
+`BOOST_EXTRA_MINUTES` enquanto a data vale. Gravado, o peso sobreviveria ao
+prazo e viraria de novo uma prioridade eterna, só que pior: sem selo na
+tela para denunciá-la. Foi assim que a primeira versão saiu, e o teste que
+trava isso hoje mede `target_seconds` da volta seguinte, não o selo.
+
 Enxugar mantém as primeiras cadeiras da fila e pausa o resto — a ordem do
 rodízio já diz o que importa mais, e pedir a mesma informação de novo seria
 fazer o usuário se repetir. O piso é duas disciplinas: abaixo disso não é

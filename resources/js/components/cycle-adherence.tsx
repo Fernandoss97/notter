@@ -29,6 +29,9 @@ export function CycleAdherencePanel({ cycle }: { cycle: CycleAdherence }) {
 
     return (
         <Panel title="Aderência ao ciclo">
+            {/* As contagens são de sempre e as fatias são das últimas
+                quatro semanas. Duas janelas na mesma caixa pedem que a
+                diferença esteja escrita, não subentendida. */}
             <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-sm text-fg-2">
                 <span>
                     <strong className="font-mono text-foreground tabular-nums">
@@ -44,7 +47,15 @@ export function CycleAdherencePanel({ cycle }: { cycle: CycleAdherence }) {
                         ? 'bloco concluído'
                         : 'blocos concluídos'}
                 </span>
+                <span className="text-xs text-muted-foreground">
+                    desde o início do ciclo
+                </span>
             </div>
+
+            <p className="text-xs text-muted-foreground">
+                Abaixo, a divisão do tempo nas últimas quatro semanas contra a
+                que o ciclo pede.
+            </p>
 
             <div className="flex flex-col gap-2.5">
                 {cycle.rows.map((row) => (

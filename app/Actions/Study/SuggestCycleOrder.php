@@ -9,6 +9,8 @@ use Illuminate\Support\Collection;
 
 class SuggestCycleOrder
 {
+    public function __construct(private ReorderCycleSlots $reorder) {}
+
     /**
      * Reordena o rodízio intercalando as famílias de disciplina (§3).
      *
@@ -38,7 +40,7 @@ class SuggestCycleOrder
         $ordered = $this->interleave($active);
         $paused = $slots->reject(fn (CycleSlot $slot) => $slot->isActive());
 
-        app(ReorderCycleSlots::class)->handle(
+        $this->reorder->handle(
             $plan,
             $ordered->concat($paused)->map(fn (CycleSlot $slot) => $slot->id)->all(),
         );

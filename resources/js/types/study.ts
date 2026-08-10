@@ -290,7 +290,10 @@ export type CycleSlotSummary = {
     subjectName: string;
     subjectMode: SubjectMode;
     subjectArea: SubjectArea;
+    /** A duração normal escolhida para a disciplina. */
     blockMinutes: number;
+    /** O que o bloco vale hoje, já com o reforço somado. */
+    effectiveBlockMinutes: number;
     /** Ainda dentro da janela de imersão inicial de uma matéria nova. */
     boosted: boolean;
     state: CycleSlotState;

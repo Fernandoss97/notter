@@ -1,6 +1,8 @@
 <?php
 
 use App\Actions\Study\AddCycleSlot;
+use App\Actions\Study\CompleteCycleBlock;
+use App\Actions\Study\ResolveCurrentCycleBlock;
 use App\Actions\Study\SetSubjectMode;
 use App\Actions\Study\TrimCycle;
 use App\Models\CycleSlot;
@@ -79,22 +81,64 @@ test('a new subject can enter in immersion, with an expiry date', function () {
 
     $slot = (new AddCycleSlot)->handle($plan, $subject, boost: true);
 
-    expect($slot->block_minutes)->toBe(CycleSlot::RECOMMENDED_MAX_BLOCK_MINUTES)
+    // A duração escolhida não muda: o reforço é somado por cima dela.
+    expect($slot->block_minutes)->toBe(CycleSlot::MIN_BLOCK_MINUTES)
+        ->and($slot->effectiveBlockMinutes())->toBe(
+            CycleSlot::MIN_BLOCK_MINUTES + CycleSlot::BOOST_EXTRA_MINUTES
+        )
         ->and($slot->boost_until->toDateString())
         ->toBe(today()->addWeeks(AddCycleSlot::BOOST_WEEKS)->toDateString())
         ->and($slot->isBoosted())->toBeTrue();
 });
 
-test('the immersion expires on its own', function () {
-    $slot = CycleSlot::factory()->create(['boost_until' => today()->subDay()]);
+test('the immersion holds through its last day', function () {
+    $slot = CycleSlot::factory()->create([
+        'block_minutes' => 60,
+        'boost_until' => today(),
+    ]);
 
-    expect($slot->isBoosted())->toBeFalse();
+    expect($slot->isBoosted())->toBeTrue()
+        ->and($slot->effectiveBlockMinutes())->toBe(90);
 });
 
-test('the immersion holds through its last day', function () {
-    $slot = CycleSlot::factory()->create(['boost_until' => today()]);
+test('an expired immersion stops weighing, and not just stops showing', function () {
+    $slot = CycleSlot::factory()->create([
+        'block_minutes' => 60,
+        'boost_until' => today()->subDay(),
+    ]);
 
-    expect($slot->isBoosted())->toBeTrue();
+    // O selo sumir sem o peso sumir junto seria a prioridade eterna de
+    // volta — pior, porque invisível.
+    expect($slot->isBoosted())->toBeFalse()
+        ->and($slot->effectiveBlockMinutes())->toBe(60)
+        ->and($slot->targetSeconds())->toBe(60 * 60);
+});
+
+test('the next lap after the immersion opens with the plain block', function () {
+    $plan = StudyPlan::factory()->active()->create();
+    $slot = CycleSlot::factory()->create([
+        'study_plan_id' => $plan->id,
+        'subject_id' => Subject::factory()->for($plan)->create()->id,
+        'block_minutes' => 60,
+        'boost_until' => today()->addWeek(),
+    ]);
+    $resolve = new ResolveCurrentCycleBlock;
+
+    expect($resolve->handle($plan)->target_seconds)->toBe(90 * 60);
+
+    (new CompleteCycleBlock)->handle($resolve->handle($plan));
+    $slot->update(['boost_until' => today()->subDay()]);
+
+    expect($resolve->handle($plan)->target_seconds)->toBe(60 * 60);
+});
+
+test('the immersion never pushes a block past the ceiling', function () {
+    $slot = CycleSlot::factory()->create([
+        'block_minutes' => CycleSlot::MAX_BLOCK_MINUTES,
+        'boost_until' => today()->addWeek(),
+    ]);
+
+    expect($slot->effectiveBlockMinutes())->toBe(CycleSlot::MAX_BLOCK_MINUTES);
 });
 
 test('trimming the cycle keeps the first seats and pauses the rest', function () {

@@ -24,10 +24,12 @@ class AddCycleSlot
      * inverteria a continuidade que o ciclo existe para proteger. Mover
      * para cima é uma reordenação explícita.
      *
-     * Com `$boost`, a matéria entra em imersão inicial: bloco no teto
-     * recomendado e uma data de validade para o reforço. A validade é o
-     * ponto — um peso declarado sem prazo nunca é revisto, que foi o que
-     * condenou a prioridade de disciplina neste projeto.
+     * Com `$boost`, a matéria entra em imersão inicial: uma data de
+     * validade para o reforço, que CycleSlot soma ao bloco enquanto ela
+     * vale. O reforço não é gravado na duração — assim ele some sozinho
+     * quando a data passa, em vez de virar um peso permanente que ninguém
+     * lembra de desfazer, que foi o que condenou a prioridade de
+     * disciplina neste projeto.
      *
      * @throws InvalidCycleTransitionException
      */
@@ -45,14 +47,10 @@ class AddCycleSlot
             throw InvalidCycleTransitionException::subjectAlreadyInCycle();
         }
 
-        $default = $boost
-            ? CycleSlot::RECOMMENDED_MAX_BLOCK_MINUTES
-            : CycleSlot::MIN_BLOCK_MINUTES;
-
         return $plan->cycleSlots()->create([
             'subject_id' => $subject->id,
             'position' => (int) $plan->cycleSlots()->max('position') + 1,
-            'block_minutes' => $blockMinutes ?? $default,
+            'block_minutes' => $blockMinutes ?? CycleSlot::MIN_BLOCK_MINUTES,
             'boost_until' => $boost ? today()->addWeeks(self::BOOST_WEEKS) : null,
         ]);
     }

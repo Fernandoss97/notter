@@ -57,6 +57,7 @@ function slot(overrides: Partial<CycleSlotSummary> = {}): CycleSlotSummary {
         subjectMode: 'reading',
         subjectArea: 'law',
         blockMinutes: 60,
+        effectiveBlockMinutes: 60,
         boosted: false,
         state: 'active',
         isCurrent: false,
@@ -289,12 +290,23 @@ describe('cycle screen', () => {
         );
     });
 
-    it('marks a subject in its initial immersion', () => {
+    it('marks a subject in its initial immersion and says what it drops to', () => {
         renderCycle({
-            slots: [slot({ id: 1, boosted: true, isCurrent: true })],
+            slots: [
+                slot({
+                    id: 1,
+                    boosted: true,
+                    blockMinutes: 60,
+                    effectiveBlockMinutes: 90,
+                    block: null,
+                }),
+            ],
         });
 
         expect(screen.getByText('Imersão')).toBeInTheDocument();
+        expect(
+            screen.getByText(/60min quando a imersão acabar/),
+        ).toBeInTheDocument();
     });
 
     it('offers no trimming while the rotation is already small', () => {

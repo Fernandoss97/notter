@@ -425,57 +425,65 @@ function SlotRow({
             data-slot="cycle-slot"
             data-current={slot.isCurrent || undefined}
             className={cn(
-                'flex flex-wrap items-center gap-x-3 gap-y-2 rounded-sm px-2 py-2 transition-colors duration-fast ease-out hover:bg-muted',
+                'flex flex-col gap-2 rounded-sm px-2 py-2 transition-colors duration-fast ease-out hover:bg-muted',
                 slot.isCurrent && 'bg-muted',
                 paused && 'opacity-60',
             )}
         >
-            <div className="flex flex-col">
-                <ReorderButton
-                    label={`Mover ${slot.subjectName} para cima`}
-                    disabled={position === 0}
-                    onClick={() => move(-1)}
-                >
-                    ▲
-                </ReorderButton>
-                <ReorderButton
-                    label={`Mover ${slot.subjectName} para baixo`}
-                    disabled={position === slots.length - 1}
-                    onClick={() => move(1)}
-                >
-                    ▼
-                </ReorderButton>
-            </div>
-
-            <span className="w-6 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
-                {position + 1}
-            </span>
-
-            <div className="flex min-w-[12rem] flex-1 flex-col gap-1">
-                <div className="flex items-center gap-2">
-                    <span className="truncate text-sm text-foreground">
-                        {slot.subjectName}
-                    </span>
-                    <StatusBadge slot={slot} />
-                    {slot.boosted && <Badge tone="focus">Imersão</Badge>}
+            <div className="flex items-center gap-3">
+                <div className="flex flex-col">
+                    <ReorderButton
+                        label={`Mover ${slot.subjectName} para cima`}
+                        disabled={position === 0}
+                        onClick={() => move(-1)}
+                    >
+                        ▲
+                    </ReorderButton>
+                    <ReorderButton
+                        label={`Mover ${slot.subjectName} para baixo`}
+                        disabled={position === slots.length - 1}
+                        onClick={() => move(1)}
+                    >
+                        ▼
+                    </ReorderButton>
                 </div>
-                <span className="text-xs text-muted-foreground">
-                    {block
-                        ? `${formatDurationMinutes(Math.floor(block.elapsedSeconds / 60))} de ${formatDurationMinutes(block.targetMinutes)}`
-                        : `${formatDurationMinutes(slot.blockMinutes)} por bloco · fora do rodízio`}
+
+                <span className="w-6 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+                    {position + 1}
                 </span>
+
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                        <span className="truncate text-sm text-foreground">
+                            {slot.subjectName}
+                        </span>
+                        <StatusBadge slot={slot} />
+                        {slot.boosted && <Badge tone="focus">Imersão</Badge>}
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                        {block
+                            ? `${formatDurationMinutes(Math.floor(block.elapsedSeconds / 60))} de ${formatDurationMinutes(block.targetMinutes)}`
+                            : `${formatDurationMinutes(slot.effectiveBlockMinutes)} por bloco · fora do rodízio`}
+                        {slot.boosted &&
+                            ` · ${slot.blockMinutes}min quando a imersão acabar`}
+                    </span>
+                </div>
+
+                {block && (
+                    <div className="w-32 shrink-0">
+                        <ProgressBar
+                            value={block.progressPercent}
+                            color={block.completed ? 'success' : 'focus'}
+                        />
+                    </div>
+                )}
             </div>
 
-            {block && (
-                <div className="w-28 shrink-0">
-                    <ProgressBar
-                        value={block.progressPercent}
-                        color={block.completed ? 'success' : 'focus'}
-                    />
-                </div>
-            )}
-
-            <div className="ml-auto flex shrink-0 items-center gap-1">
+            {/* Os controles ficam alinhados sob o nome, com o mesmo recuo
+                das setas e do número. Deixá-los disputar a primeira faixa
+                achatava a coluna do nome — a única informação que a linha
+                existe para dar. */}
+            <div className="flex flex-wrap items-center gap-1 pl-[3.25rem]">
                 <SubjectFieldSelect
                     slot={slot}
                     field="area"
@@ -843,9 +851,11 @@ function AddSlotPanel({ subjects }: { subjects: { id: number; name: string }[] }
                             !form.data.boost && 'hidden',
                         )}
                     >
-                        Matéria nova entra com bloco maior por duas semanas, e
-                        depois volta a valer o que todas valem — o reforço tem
-                        prazo para não virar uma prioridade eterna.
+                        Matéria nova ganha 30 minutos a mais por bloco durante
+                        duas semanas. O reforço é somado por cima da duração
+                        escolhida e some sozinho no fim do prazo — assim ele
+                        não vira uma prioridade eterna que ninguém lembra de
+                        desfazer.
                     </p>
 
                     <p
