@@ -29,7 +29,7 @@ test('a user can add a task to the track and complete it', function () {
         // "Adicionar" também é o começo do título do painel: só o botão serve.
         ->click('button:text-is("Adicionar")')
         ->assertSee('Estudo da Aula 00')
-        ->assertSee('Ciclo 1')
+        ->assertSee('Onda 1')
         ->assertNoJavaScriptErrors();
 
     $page->click('[aria-label="Marcar Estudo da Aula 00 como concluída"]')
@@ -127,8 +127,8 @@ test('a user can import a track pasted from the spreadsheet', function () {
         ->assertSee('2 disciplinas criadas')
         ->assertNoJavaScriptErrors();
 
-    $page->assertSee('Ciclo 1')
-        ->assertSee('Ciclo 2')
+    $page->assertSee('Onda 1')
+        ->assertSee('Onda 2')
         ->assertSee('Estudo da Aula 00')
         ->assertSee('Estudo da Aula 01')
         ->assertNoJavaScriptErrors();
@@ -156,8 +156,8 @@ test('the track lists the queue across subjects, cycle by cycle', function () {
         ->assertPathIs('/trilha')
         ->assertSee('Aula 00 de BD')
         ->assertSee('Estruturas Lógicas I')
-        ->assertSee('Ciclo 1')
-        ->assertSee('Ciclo 2')
+        ->assertSee('Onda 1')
+        ->assertSee('Onda 2')
         // O estado vazio continua montado (para animar a própria entrada),
         // então o que se verifica é que ele está desligado, não ausente.
         ->assertAttribute('[data-slot="track-empty"]', 'data-visible', 'false')

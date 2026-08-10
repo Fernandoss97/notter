@@ -52,9 +52,11 @@ import {
     show,
     start as startSession,
 } from '@/routes/focus';
+import { index as showCycle } from '@/routes/cycle';
 import { index as showPlan } from '@/routes/plans';
 import type {
     ActivityType,
+    CycleBlockSummary,
     DueReview,
     FocusSession,
     PlanSummary,
@@ -72,6 +74,7 @@ interface FocusShowProps {
     plan: StudyPlanSummary | null;
     session: FocusSession | null;
     pomodoroSetting: PomodoroSettingSummary;
+    currentBlock: CycleBlockSummary | null;
     todayPomodoros: number;
     today: TodayProgress;
     dueReviews: DueReview[];
@@ -82,6 +85,7 @@ export default function FocusShow({
     plan,
     session,
     pomodoroSetting,
+    currentBlock = null,
     todayPomodoros,
     today,
     dueReviews,
@@ -98,6 +102,7 @@ export default function FocusShow({
                     session={session}
                     plan={plan}
                     pomodoroSetting={pomodoroSetting}
+                    currentBlock={currentBlock}
                     todayPomodoros={todayPomodoros}
                     today={today}
                     dueReviews={dueReviews}
@@ -110,6 +115,7 @@ export default function FocusShow({
                         today={today}
                         todayPomodoros={todayPomodoros}
                         dueReviews={dueReviews}
+                        currentBlock={currentBlock}
                         focusMinutes={pomodoroSetting.focusMinutes}
                     />
                 </Page>
@@ -156,6 +162,7 @@ function IdleView({
     today,
     todayPomodoros,
     dueReviews,
+    currentBlock,
     focusMinutes,
 }: {
     plans: PlanSummary[];
@@ -163,6 +170,7 @@ function IdleView({
     today: TodayProgress;
     todayPomodoros: number;
     dueReviews: DueReview[];
+    currentBlock: CycleBlockSummary | null;
     focusMinutes: number;
 }) {
     const [preset, setPreset] = useState<{
@@ -212,16 +220,20 @@ function IdleView({
                     escolhe um tópico, ou quando a troca de plano traz
                     outras disciplinas: é o jeito React de reiniciar estado
                     a partir de uma prop, sem sincronizar em efeito. */}
-                <StartSessionPanel
-                    key={
-                        preset
-                            ? `${preset.subjectId}-${preset.topicId}`
-                            : `suggested-${plan.id}`
-                    }
-                    plan={plan}
-                    preset={preset}
-                    dueReviews={dueReviews}
-                />
+                <div className="flex flex-col gap-6">
+                    <CurrentBlockPanel block={currentBlock} />
+                    <StartSessionPanel
+                        key={
+                            preset
+                                ? `${preset.subjectId}-${preset.topicId}`
+                                : `suggested-${plan.id}-${currentBlock?.id ?? 0}`
+                        }
+                        plan={plan}
+                        preset={preset}
+                        dueReviews={dueReviews}
+                        currentBlock={currentBlock}
+                    />
+                </div>
                 <ReviewQueue
                     reviews={dueReviews}
                     onStudy={(review) =>
@@ -281,22 +293,84 @@ function TodaySummary({
     return <Panel title="Hoje">{content}</Panel>;
 }
 
+/**
+ * De quem é a vez no ciclo, e quanto falta do bloco.
+ *
+ * Fica montado mesmo sem ciclo montado, escondido — assim montar o rodízio
+ * não empurra o painel de iniciar sessão para baixo na volta seguinte.
+ * `aria-hidden` + `inert` tiram-no também da leitura assistiva.
+ */
+function CurrentBlockPanel({ block }: { block: CycleBlockSummary | null }) {
+    const visible = block !== null;
+
+    return (
+        <div
+            data-slot="focus-current-block"
+            data-visible={visible}
+            aria-hidden={!visible}
+            inert={!visible || undefined}
+            hidden={!visible}
+            className={cn(!visible && 'hidden')}
+        >
+            <Panel title="A vez do ciclo">
+                {block && (
+                    <>
+                        <div className="flex items-baseline justify-between gap-3">
+                            <span className="text-md font-bold text-foreground">
+                                {block.subjectName}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                                volta {block.lap}
+                            </span>
+                        </div>
+                        <ProgressBar value={block.progressPercent} />
+                        <p className="text-xs text-muted-foreground">
+                            {formatDurationMinutes(
+                                Math.floor(block.elapsedSeconds / 60),
+                            )}{' '}
+                            de {formatDurationMinutes(block.targetMinutes)} ·
+                            faltam{' '}
+                            {formatDurationMinutes(block.remainingMinutes)}
+                        </p>
+                        <Button variant="ghost" size="sm" asChild className="w-fit">
+                            <Link href={showCycle()}>Ver o ciclo</Link>
+                        </Button>
+                    </>
+                )}
+            </Panel>
+        </div>
+    );
+}
+
 function StartSessionPanel({
     plan,
     preset,
     dueReviews,
+    currentBlock,
 }: {
     plan: StudyPlanSummary;
     preset: { subjectId: number; topicId: number | null } | null;
     dueReviews: DueReview[];
+    currentBlock: CycleBlockSummary | null;
 }) {
     // A ordem de quem decide o que já vem escolhido: o clique do usuário na
-    // fila, depois a revisão mais atrasada (a mesma primeira linha da fila
-    // ao lado), e só então a próxima tarefa da trilha.
+    // fila, depois a vez do ciclo, depois a revisão mais atrasada (a mesma
+    // primeira linha da fila ao lado), e só então a próxima tarefa da trilha.
+    //
+    // O bloco do rodízio passa à frente da revisão porque ele decide a
+    // *disciplina*: começar por outra faria a sessão não creditar o bloco e
+    // o ciclo pararia de andar sem ninguém entender por quê. Dentro da
+    // disciplina da vez, a trilha continua escolhendo a tarefa.
     const dueReview = dueReviews[0]
         ? { subjectId: dueReviews[0].subjectId, topicId: dueReviews[0].topicId }
         : null;
-    const initial = preset ?? dueReview ?? suggestNextStudy(plan.subjects);
+    const initial =
+        preset ??
+        (currentBlock
+            ? suggestNextStudy(plan.subjects, currentBlock.subjectId)
+            : null) ??
+        dueReview ??
+        suggestNextStudy(plan.subjects);
 
     const form = useForm({
         subject_id: initial ? String(initial.subjectId) : '',
@@ -392,6 +466,7 @@ function ActiveSessionView({
     session,
     plan,
     pomodoroSetting,
+    currentBlock,
     todayPomodoros,
     today,
     dueReviews,
@@ -399,6 +474,7 @@ function ActiveSessionView({
     session: FocusSession;
     plan: StudyPlanSummary;
     pomodoroSetting: PomodoroSettingSummary;
+    currentBlock: CycleBlockSummary | null;
     todayPomodoros: number;
     today: TodayProgress;
     dueReviews: DueReview[];
@@ -582,6 +658,8 @@ function ActiveSessionView({
 
                 <div className="flex flex-col gap-5">
                     <TodaySummary today={today} pomodoros={todayPomodoros} />
+
+                    <CurrentBlockPanel block={currentBlock} />
 
                     <SessionNotes initialNotes={session.notes} />
 

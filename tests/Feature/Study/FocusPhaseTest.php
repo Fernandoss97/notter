@@ -232,7 +232,7 @@ test('closing an abandoned break does not add the overflow to the focus time', f
 
     $this->travel(5)->hours();
 
-    $closed = (new CloseAbandonedFocusSession)->handle($session);
+    $closed = app(CloseAbandonedFocusSession::class)->handle($session);
 
     expect($closed->accumulated_seconds)->toBe(3000)
         ->and($closed->break_seconds)->toBe(10 * 60);

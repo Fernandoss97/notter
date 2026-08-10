@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
  * @property int $study_plan_id
  * @property int|null $subject_id
  * @property int|null $topic_id
+ * @property int|null $cycle_block_id
  * @property ActivityType|null $activity_type
  * @property FocusSessionState $state
  * @property FocusPhase $phase
@@ -36,7 +37,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  */
 #[Fillable([
-    'user_id', 'study_plan_id', 'subject_id', 'topic_id', 'activity_type', 'state', 'phase',
+    'user_id', 'study_plan_id', 'subject_id', 'topic_id', 'cycle_block_id', 'activity_type', 'state', 'phase',
     'planned_seconds', 'accumulated_seconds', 'phase_accumulated_seconds', 'break_seconds',
     'completed_cycles', 'started_at', 'resumed_at', 'ended_at',
     'exercises_total', 'exercises_correct', 'notes',
@@ -122,6 +123,17 @@ class StudySession extends Model
     }
 
     /**
+     * O bloco do rodízio que esta sessão alimenta. Nulo é legítimo: quem
+     * estuda fora do ciclo — ou não montou nenhum — continua registrando.
+     *
+     * @return BelongsTo<CycleBlock, $this>
+     */
+    public function cycleBlock(): BelongsTo
+    {
+        return $this->belongsTo(CycleBlock::class);
+    }
+
+    /**
      * O segmento ainda não congelado: só existe enquanto a sessão roda.
      * Pausar, trocar de fase e encerrar são justamente as operações que o
      * somam num acumulador e o zeram.
@@ -143,8 +155,17 @@ class StudySession extends Model
      */
     public function elapsedSeconds(): int
     {
-        return $this->accumulated_seconds
-            + ($this->phase === FocusPhase::Focus ? $this->liveSeconds() : 0);
+        return $this->accumulated_seconds + $this->liveFocusSeconds();
+    }
+
+    /**
+     * A parte ainda não congelada do tempo de *foco*. É o que falta somar
+     * a um total já persistido para ele não travar enquanto o cronômetro
+     * roda — o bloco do ciclo depende disso para mostrar progresso vivo.
+     */
+    public function liveFocusSeconds(): int
+    {
+        return $this->phase === FocusPhase::Focus ? $this->liveSeconds() : 0;
     }
 
     public function breakElapsedSeconds(): int

@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\CycleBlockController;
+use App\Http\Controllers\CycleController;
+use App\Http\Controllers\CycleSlotController;
 use App\Http\Controllers\FocusSessionController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\PomodoroSettingController;
@@ -29,6 +32,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('plano/topics/{topic}/complete', [TopicController::class, 'complete'])->name('topics.complete');
     Route::post('plano/topics/{topic}/uncomplete', [TopicController::class, 'uncomplete'])->name('topics.uncomplete');
     Route::put('plano/topics/{topic}/questoes', [TopicController::class, 'exercises'])->name('topics.exercises');
+
+    Route::get('ciclo', [CycleController::class, 'index'])->name('cycle.index');
+    Route::post('ciclo/cadeiras', [CycleSlotController::class, 'store'])->name('cycle-slots.store');
+    Route::post('ciclo/cadeiras/ordem', [CycleSlotController::class, 'reorder'])->name('cycle-slots.reorder');
+    Route::put('ciclo/cadeiras/{cycleSlot}', [CycleSlotController::class, 'update'])->name('cycle-slots.update');
+    Route::delete('ciclo/cadeiras/{cycleSlot}', [CycleSlotController::class, 'destroy'])->name('cycle-slots.destroy');
+    Route::post('ciclo/blocos/{cycleBlock}/complete', [CycleBlockController::class, 'complete'])->name('cycle-blocks.complete');
 
     Route::get('trilha', [StudyTrackController::class, 'index'])->name('track.index');
     Route::post('trilha/importar', [StudyTrackController::class, 'import'])->name('track.import');

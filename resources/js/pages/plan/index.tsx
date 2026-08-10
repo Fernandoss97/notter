@@ -503,8 +503,8 @@ function formatExamDate(date: string): string {
 }
 
 /**
- * O ciclo só vira informação quando existe mais de um: numa trilha de um
- * ciclo só, um "Ciclo 1" repetido em cada linha é ruído.
+ * A onda da trilha só vira informação quando existe mais de uma: numa
+ * trilha de uma onda só, um "Onda 1" repetido em cada linha é ruído.
  */
 function hasSeveralCycles(plan: ActiveStudyPlan): boolean {
     const cycles = new Set(
@@ -639,7 +639,7 @@ function TopicRow({
             </span>
             {showCycle && (
                 <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                    Ciclo {topic.cycle + 1}
+                    Onda {topic.cycle + 1}
                 </span>
             )}
             {topic.reviewStatus && (

@@ -212,6 +212,50 @@ export type TrackPlan = {
     subjects: { id: number; name: string }[];
 };
 
+/**
+ * "Fora do rodízio", não "apagada": a cadeira pausada continua na tela
+ * justamente para poder voltar — é assim que o ciclo é enxugado para um
+ * nivelamento sem perder o que já estava montado.
+ */
+export type CycleSlotState = 'active' | 'paused';
+
+/**
+ * A execução de uma cadeira do rodízio numa volta. Não é um pomodoro: o
+ * bloco acumula tempo de foco ao longo de vários pomodoros e vários dias,
+ * e é isso que faz o "retomar de onde parou" funcionar.
+ */
+export type CycleBlockSummary = {
+    id: number;
+    subjectId: number;
+    subjectName: string;
+    lap: number;
+    targetMinutes: number;
+    /** Já inclui o segmento vivo da sessão que alimenta este bloco. */
+    elapsedSeconds: number;
+    remainingMinutes: number;
+    progressPercent: number;
+    completed: boolean;
+    /** Há uma sessão de foco em andamento alimentando este bloco. */
+    isActive: boolean;
+};
+
+export type CycleSlotSummary = {
+    id: number;
+    subjectId: number;
+    subjectName: string;
+    blockMinutes: number;
+    state: CycleSlotState;
+    /** É a vez desta disciplina na volta corrente. */
+    isCurrent: boolean;
+    block: CycleBlockSummary | null;
+};
+
+export type StudyCycle = {
+    lap: number;
+    currentBlockId: number | null;
+    slots: CycleSlotSummary[];
+};
+
 export type PomodoroSettingFull = {
     focusMinutes: number;
     shortBreakMinutes: number;

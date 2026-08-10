@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -58,6 +59,18 @@ class Subject extends Model
     public function topics(): HasMany
     {
         return $this->hasMany(Topic::class)->orderBy('cycle')->orderBy('position');
+    }
+
+    /**
+     * A cadeira da disciplina no rodízio, se ela estiver no ciclo. É
+     * `hasOne` porque uma disciplina ocupa no máximo uma cadeira por
+     * plano: peso maior se expressa em duração de bloco, não em repetição.
+     *
+     * @return HasOne<CycleSlot, $this>
+     */
+    public function cycleSlot(): HasOne
+    {
+        return $this->hasOne(CycleSlot::class);
     }
 
     /**

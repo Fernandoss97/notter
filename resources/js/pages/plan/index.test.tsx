@@ -275,7 +275,7 @@ describe('PlanIndex', () => {
             />,
         );
 
-        expect(screen.queryByText('Ciclo 1')).not.toBeInTheDocument();
+        expect(screen.queryByText('Onda 1')).not.toBeInTheDocument();
 
         rerender(
             <PlanIndex
@@ -284,8 +284,8 @@ describe('PlanIndex', () => {
             />,
         );
 
-        expect(screen.getByText('Ciclo 1')).toBeInTheDocument();
-        expect(screen.getByText('Ciclo 2')).toBeInTheDocument();
+        expect(screen.getByText('Onda 1')).toBeInTheDocument();
+        expect(screen.getByText('Onda 2')).toBeInTheDocument();
     });
 });
 

@@ -1,5 +1,12 @@
 import { Link } from '@inertiajs/react';
-import { BookOpen, History, LayoutGrid, ListChecks, Timer } from 'lucide-react';
+import {
+    BookOpen,
+    History,
+    LayoutGrid,
+    ListChecks,
+    RefreshCw,
+    Timer,
+} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -13,6 +20,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { index as showCycle } from '@/routes/cycle';
 import { show as showFocus } from '@/routes/focus';
 import { index as showHistory } from '@/routes/history';
 import { index as showPlan } from '@/routes/plans';
@@ -26,6 +34,11 @@ const mainNavItems: NavItem[] = [
         title: 'Foco',
         href: showFocus(),
         icon: Timer,
+    },
+    {
+        title: 'Ciclo',
+        href: showCycle(),
+        icon: RefreshCw,
     },
     {
         title: 'Progresso',

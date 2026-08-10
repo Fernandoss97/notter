@@ -136,7 +136,7 @@ describe('TrackIndex', () => {
             />,
         );
 
-        expect(screen.getByText('Ciclo 1')).toBeInTheDocument();
+        expect(screen.getByText('Onda 1')).toBeInTheDocument();
         expect(screen.getByText('1 de 2 tarefas')).toBeInTheDocument();
     });
 
@@ -241,7 +241,7 @@ describe('TrackIndex', () => {
             />,
         );
 
-        expect(screen.getByLabelText('Ciclo')).toHaveValue(3);
+        expect(screen.getByLabelText('Onda')).toHaveValue(3);
     });
 
     it('echoes a task being added while the server confirms', async () => {

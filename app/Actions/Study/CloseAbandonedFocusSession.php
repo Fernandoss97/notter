@@ -2,12 +2,15 @@
 
 namespace App\Actions\Study;
 
+use App\Models\CycleBlock;
 use App\Models\Enums\FocusPhase;
 use App\Models\Enums\FocusSessionState;
 use App\Models\StudySession;
 
 class CloseAbandonedFocusSession
 {
+    public function __construct(private SyncCycleBlockProgress $syncCycleBlock) {}
+
     /**
      * Encerra uma sessão que ninguém fechou — aba fechada no meio do
      * ciclo, notebook fechado, sessão pausada esquecida.
@@ -31,6 +34,15 @@ class CloseAbandonedFocusSession
             'resumed_at' => null,
             'ended_at' => $session->resumed_at?->copy()->addSeconds($liveSeconds) ?? $session->updated_at ?? now(),
         ]);
+
+        // O bloco do rodízio precisa saber do tempo capado: é o único
+        // caminho em que uma sessão fecha longe de uma requisição do
+        // usuário, e sem isso o bloco ficaria devendo o que ela estudou.
+        $block = $session->cycleBlock()->first();
+
+        if ($block instanceof CycleBlock) {
+            $this->syncCycleBlock->handle($block);
+        }
 
         return $session->refresh();
     }

@@ -251,7 +251,7 @@ function EmptyCycles({ visible }: { visible: boolean }) {
             className={cn('text-sm text-fg-2', !visible && 'hidden')}
         >
             Nenhuma tarefa na trilha ainda. Adicione a primeira acima — ela abre
-            o ciclo 1.
+            a onda 1.
         </p>
     );
 }
@@ -265,7 +265,7 @@ function CyclePanel({ cycle }: { cycle: TrackCycle }) {
             <div className="flex items-center justify-between gap-4">
                 <div>
                     <div className="text-md font-bold text-foreground">
-                        Ciclo {cycle.cycle + 1}
+                        Onda {cycle.cycle + 1}
                     </div>
                     <div className="mt-0.5 text-xs text-muted-foreground">
                         {cycle.done} de {cycle.total} tarefas
@@ -491,8 +491,11 @@ function ExercisesDialog({ task }: { task: TrackTask }) {
 }
 
 /**
- * O ciclo aparece 1-based na tela e viaja 0-based para o servidor: "ciclo
- * 1" lê melhor que "ciclo 0", e o banco continua contando do zero.
+ * A onda aparece 1-based na tela e viaja 0-based para o servidor: "onda 1"
+ * lê melhor que "onda 0", e o banco continua contando do zero.
+ *
+ * "Onda" e não "ciclo": ciclo é o rodízio de disciplinas (ver /ciclo) e o
+ * ciclo pomodoro. A coluna continua sendo `topics.cycle`; só o rótulo muda.
  */
 function AddTaskPanel({
     subjects,
@@ -581,7 +584,7 @@ function AddTaskPanel({
                 </div>
 
                 <div className="flex w-24 flex-col gap-2">
-                    <Label htmlFor="task_cycle">Ciclo</Label>
+                    <Label htmlFor="task_cycle">Onda</Label>
                     <Input
                         id="task_cycle"
                         type="number"

@@ -19,7 +19,7 @@ test('starting a session snapshots the user pomodoro focus duration', function (
     PomodoroSetting::factory()->for($user)->create(['focus_minutes' => 30]);
     $plan = StudyPlan::factory()->for($user)->active()->create();
 
-    $session = (new StartFocusSession)->handle($user, $plan);
+    $session = app(StartFocusSession::class)->handle($user, $plan);
 
     expect($session->planned_seconds)->toBe(30 * 60)
         ->and($session->state)->toBe(FocusSessionState::Running)
@@ -30,7 +30,7 @@ test('starting a session falls back to the default focus duration without settin
     $user = User::factory()->create();
     $plan = StudyPlan::factory()->for($user)->active()->create();
 
-    $session = (new StartFocusSession)->handle($user, $plan);
+    $session = app(StartFocusSession::class)->handle($user, $plan);
 
     expect($session->planned_seconds)->toBe((new PomodoroSetting)->focus_minutes * 60);
 });
@@ -38,9 +38,9 @@ test('starting a session falls back to the default focus duration without settin
 test('a user cannot start a second session while one is already active', function () {
     $user = User::factory()->create();
     $plan = StudyPlan::factory()->for($user)->active()->create();
-    (new StartFocusSession)->handle($user, $plan);
+    app(StartFocusSession::class)->handle($user, $plan);
 
-    (new StartFocusSession)->handle($user, $plan);
+    app(StartFocusSession::class)->handle($user, $plan);
 })->throws(InvalidFocusSessionTransitionException::class);
 
 test('pausing a running session freezes the elapsed time and clears resumed_at', function () {

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { hiddenTimePreference } from '@/hooks/use-hidden-time';
 import type {
+    CycleBlockSummary,
     DueReview,
     FocusSession,
     PomodoroSettingSummary,
@@ -108,6 +109,7 @@ function renderFocus(
     active: FocusSession | null,
     dueReviews: DueReview[] = [],
     settings: PomodoroSettingSummary = pomodoroSetting,
+    currentBlock: CycleBlockSummary | null = null,
 ) {
     return render(
         <FocusShow
@@ -115,6 +117,7 @@ function renderFocus(
             plan={plan}
             session={active}
             pomodoroSetting={settings}
+            currentBlock={currentBlock}
             todayPomodoros={2}
             today={{ minutes: 40, goalMinutes: 100 }}
             dueReviews={dueReviews}
@@ -217,6 +220,7 @@ describe('FocusShow', () => {
                 plan={twoSubjects}
                 session={null}
                 pomodoroSetting={pomodoroSetting}
+                currentBlock={null}
                 todayPomodoros={0}
                 today={{ minutes: 0, goalMinutes: 100 }}
                 dueReviews={[
@@ -328,5 +332,81 @@ describe('FocusShow', () => {
         expect(
             screen.queryByText('Registrar a sessão'),
         ).not.toBeInTheDocument();
+    });
+
+    describe('the turn of the cycle', () => {
+        const block: CycleBlockSummary = {
+            id: 7,
+            subjectId: 10,
+            subjectName: 'Álgebra Linear',
+            lap: 3,
+            targetMinutes: 90,
+            elapsedSeconds: 30 * 60,
+            remainingMinutes: 60,
+            progressPercent: 33,
+            completed: false,
+            isActive: false,
+        };
+
+        it('names whose turn it is and how much of the block is left', () => {
+            const { container } = renderFocus(null, [], pomodoroSetting, block);
+
+            const panel = container.querySelector(
+                '[data-slot="focus-current-block"]',
+            );
+            expect(panel).toHaveAttribute('data-visible', 'true');
+            expect(panel).toHaveTextContent('Álgebra Linear');
+            expect(panel).toHaveTextContent('volta 3');
+            expect(panel).toHaveTextContent('faltam 1h 0min');
+        });
+
+        it('stays mounted but inert when no cycle is set up', () => {
+            const { container } = renderFocus(null, [], pomodoroSetting, null);
+
+            const panel = container.querySelector(
+                '[data-slot="focus-current-block"]',
+            );
+            expect(panel).toHaveAttribute('data-visible', 'false');
+            expect(panel).toHaveAttribute('aria-hidden', 'true');
+        });
+
+        it('keeps the block in sight while the timer runs', () => {
+            const { container } = renderFocus(
+                session(),
+                [],
+                pomodoroSetting,
+                block,
+            );
+
+            const panel = container.querySelector(
+                '[data-slot="focus-current-block"]',
+            );
+            expect(panel).toHaveAttribute('data-visible', 'true');
+            expect(panel).toHaveTextContent('volta 3');
+        });
+
+        it('preselects the block subject over the overdue review', () => {
+            renderFocus(
+                null,
+                [
+                    {
+                        id: 1,
+                        subjectId: 11,
+                        subjectName: 'Estatística',
+                        topicId: 110,
+                        topicName: 'Distribuições',
+                        sequence: 1,
+                        dueOn: '05/08',
+                        overdue: true,
+                    },
+                ],
+                pomodoroSetting,
+                block,
+            );
+
+            expect(screen.getByLabelText('Disciplina (opcional)')).toHaveTextContent(
+                'Álgebra Linear',
+            );
+        });
     });
 });

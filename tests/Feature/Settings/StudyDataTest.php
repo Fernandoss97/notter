@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\CycleBlock;
+use App\Models\CycleSlot;
 use App\Models\PomodoroSetting;
 use App\Models\Review;
 use App\Models\StudyPlan;
@@ -25,6 +27,15 @@ test('the study data of the user is deleted, and only it', function () {
     StudySession::factory()->for($user)->for($plan)->for($subject)->for($topic)->completed()->create();
     $settings = PomodoroSetting::factory()->for($user)->create(['focus_minutes' => 42]);
 
+    // O ciclo pendura no plano, então cai na mesma cascata. Vai explícito
+    // porque nada no controller o menciona: quem apagar o plano de outro
+    // jeito precisa descobrir aqui que o rodízio ia junto.
+    $slot = CycleSlot::factory()->create([
+        'study_plan_id' => $plan->id,
+        'subject_id' => $subject->id,
+    ]);
+    CycleBlock::factory()->for($slot)->create();
+
     $this->actingAs($user)
         ->from(route('profile.edit'))
         ->delete(route('study-data.destroy'), ['password' => 'password'])
@@ -35,7 +46,9 @@ test('the study data of the user is deleted, and only it', function () {
         ->and(Subject::count())->toBe(0)
         ->and(Topic::count())->toBe(0)
         ->and(Review::count())->toBe(0)
-        ->and(StudySession::count())->toBe(0);
+        ->and(StudySession::count())->toBe(0)
+        ->and(CycleSlot::count())->toBe(0)
+        ->and(CycleBlock::count())->toBe(0);
 
     // Quem estudou continua existindo, autenticado e com suas preferências.
     $this->assertAuthenticatedAs($user);

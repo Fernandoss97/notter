@@ -7,14 +7,19 @@ use App\Actions\Study\CompleteFocusSession;
 use App\Actions\Study\Exceptions\InvalidFocusSessionTransitionException;
 use App\Actions\Study\ExtendFocusPhase;
 use App\Actions\Study\PauseFocusSession;
+use App\Actions\Study\ResolveCurrentCycleBlock;
 use App\Actions\Study\ResolveCurrentFocusSession;
 use App\Actions\Study\ResumeFocusSession;
 use App\Actions\Study\StartFocusSession;
+use App\Actions\Study\SyncCycleBlockProgress;
+use App\Concerns\AnnouncesCycleTurn;
 use App\Concerns\ListsStudyPlans;
+use App\Concerns\SummarizesCycleBlock;
 use App\Concerns\SummarizesStudyTime;
 use App\Http\Requests\Study\CompleteFocusSessionRequest;
 use App\Http\Requests\Study\StartFocusSessionRequest;
 use App\Http\Requests\Study\UpdateFocusSessionNotesRequest;
+use App\Models\CycleBlock;
 use App\Models\Enums\ActivityType;
 use App\Models\Enums\FocusSessionState;
 use App\Models\Review;
@@ -32,7 +37,9 @@ use Inertia\Response;
 
 class FocusSessionController extends Controller
 {
+    use AnnouncesCycleTurn;
     use ListsStudyPlans;
+    use SummarizesCycleBlock;
     use SummarizesStudyTime;
 
     /**
@@ -41,7 +48,11 @@ class FocusSessionController extends Controller
      */
     private const DUE_REVIEWS_LIMIT = 8;
 
-    public function __construct(private ResolveCurrentFocusSession $resolveCurrentSession) {}
+    public function __construct(
+        private ResolveCurrentFocusSession $resolveCurrentSession,
+        private ResolveCurrentCycleBlock $resolveCurrentBlock,
+        private SyncCycleBlockProgress $syncCycleBlock,
+    ) {}
 
     /**
      * A tela principal do app: a sessão corrente (se houver), o plano
@@ -95,6 +106,9 @@ class FocusSessionController extends Controller
                 'logSessionOnFinish' => $settings->log_session_on_finish,
                 'silentModeDuringFocus' => $settings->silent_mode_during_focus,
             ],
+            'currentBlock' => $plan instanceof StudyPlan
+                ? $this->cycleBlockProp($this->resolveCurrentBlock->handle($plan), $session)
+                : null,
             'todayPomodoros' => $todayPomodoros,
             'today' => [
                 'minutes' => $this->minutesStudied(
@@ -245,8 +259,14 @@ class FocusSessionController extends Controller
             return back();
         }
 
-        if ($successMessage) {
-            Inertia::flash('toast', ['type' => 'success', 'message' => $successMessage]);
+        // Toda transição que congela tempo de foco passa por aqui — pausar,
+        // avançar de fase e encerrar. É o ponto único onde o bloco do
+        // rodízio se reconcilia com o que a sessão acumulou, e onde ele
+        // fecha ao bater o alvo, fazendo o ciclo andar.
+        $message = $this->syncBlockAndAnnounce($session, $successMessage);
+
+        if ($message !== null) {
+            Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
         }
 
         return back();
@@ -255,6 +275,31 @@ class FocusSessionController extends Controller
     private function currentSession(Request $request): ?StudySession
     {
         return $this->resolveCurrentSession->handle($request->user());
+    }
+
+    /**
+     * Reconcilia o bloco do rodízio e devolve o aviso a mostrar: o da
+     * própria transição, ou ele acrescido do convite para a próxima
+     * matéria quando o tempo da sessão fechou o bloco.
+     */
+    private function syncBlockAndAnnounce(StudySession $session, ?string $successMessage): ?string
+    {
+        $block = $session->cycleBlock()->first();
+
+        if (! $block instanceof CycleBlock) {
+            return $successMessage;
+        }
+
+        $wasOpen = ! $block->isCompleted();
+
+        // O bloco reconciliado vem do retorno, e não da instância mutada:
+        // "fechou agora" é a diferença entre dois valores, e lê melhor
+        // como tal do que como um efeito colateral relido.
+        $synced = $this->syncCycleBlock->handle($block);
+
+        return $wasOpen && $synced->isCompleted()
+            ? $this->cycleTurnMessage($session->studyPlan, $synced, $successMessage)
+            : $successMessage;
     }
 
     /**

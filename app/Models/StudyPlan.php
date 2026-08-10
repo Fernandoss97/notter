@@ -91,6 +91,18 @@ class StudyPlan extends Model
     }
 
     /**
+     * O rodízio do plano: as disciplinas na ordem em que se alternam.
+     * Um plano tem um ciclo só — o próprio plano é o dono, não há modelo
+     * intermediário.
+     *
+     * @return HasMany<CycleSlot, $this>
+     */
+    public function cycleSlots(): HasMany
+    {
+        return $this->hasMany(CycleSlot::class)->orderBy('position');
+    }
+
+    /**
      * @return HasMany<StudySession, $this>
      */
     public function studySessions(): HasMany
