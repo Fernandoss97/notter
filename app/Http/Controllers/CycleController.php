@@ -50,8 +50,8 @@ class CycleController extends Controller
         }
 
         $session = $this->resolveCurrentSession->handle($user);
-        $currentBlock = $this->resolveCurrentBlock->handle($plan);
         $slots = $plan->cycleSlots()->with('subject')->get();
+        $currentBlock = $this->resolveCurrentBlock->handle($plan);
 
         return Inertia::render('cycle/index', [
             'plans' => $this->planOptions($request),
@@ -60,6 +60,13 @@ class CycleController extends Controller
                 'lap' => $currentBlock instanceof CycleBlock ? $currentBlock->lap : 0,
                 'currentBlockId' => $currentBlock?->id,
                 'slots' => $this->slotProps($slots, $currentBlock, $session),
+                // Quantas matérias estão em primeiro contato, contra o que
+                // o método recomenda (§4). É o número que dá o sinal de
+                // ciclo inchado antes de a volta ficar longa demais.
+                'readingCount' => $slots
+                    ->filter(fn (CycleSlot $slot) => $slot->isActive() && $slot->subject->mode->isFirstContact())
+                    ->count(),
+                'recommendedReading' => Subject::RECOMMENDED_READING_SUBJECTS,
             ],
             'availableSubjects' => $this->availableSubjects($plan, $slots),
         ]);
@@ -73,7 +80,7 @@ class CycleController extends Controller
      * há vez.
      *
      * @param  Collection<int, CycleSlot>  $slots
-     * @return array<int, array{id: int, subjectId: int, subjectName: string, blockMinutes: int, state: string, isCurrent: bool, block: array<string, mixed>|null}>
+     * @return array<int, array{id: int, subjectId: int, subjectName: string, subjectMode: string, blockMinutes: int, boosted: bool, state: string, isCurrent: bool, block: array<string, mixed>|null}>
      */
     private function slotProps(Collection $slots, ?CycleBlock $currentBlock, ?StudySession $session): array
     {
@@ -93,7 +100,9 @@ class CycleController extends Controller
                 'id' => $slot->id,
                 'subjectId' => $slot->subject_id,
                 'subjectName' => $slot->subject->name,
+                'subjectMode' => $slot->subject->mode->value,
                 'blockMinutes' => $slot->block_minutes,
+                'boosted' => $slot->isBoosted(),
                 'state' => $slot->state->value,
                 'isCurrent' => $block instanceof CycleBlock
                     && $currentBlock instanceof CycleBlock

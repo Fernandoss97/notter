@@ -239,11 +239,21 @@ export type CycleBlockSummary = {
     isActive: boolean;
 };
 
+/**
+ * Em que pé está a disciplina: primeiro contato com a teoria, já em
+ * revisão, ou encerrada. Sair da leitura reduz o que ela ocupa no rodízio,
+ * e é essa folga que abre espaço para uma matéria nova.
+ */
+export type SubjectMode = 'reading' | 'review' | 'done';
+
 export type CycleSlotSummary = {
     id: number;
     subjectId: number;
     subjectName: string;
+    subjectMode: SubjectMode;
     blockMinutes: number;
+    /** Ainda dentro da janela de imersão inicial de uma matéria nova. */
+    boosted: boolean;
     state: CycleSlotState;
     /** É a vez desta disciplina na volta corrente. */
     isCurrent: boolean;
@@ -254,6 +264,9 @@ export type StudyCycle = {
     lap: number;
     currentBlockId: number | null;
     slots: CycleSlotSummary[];
+    /** Matérias em primeiro contato hoje, contra o que se recomenda. */
+    readingCount: number;
+    recommendedReading: number;
 };
 
 export type PomodoroSettingFull = {

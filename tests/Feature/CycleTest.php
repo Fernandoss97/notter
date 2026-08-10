@@ -3,6 +3,7 @@
 use App\Models\CycleBlock;
 use App\Models\CycleSlot;
 use App\Models\Enums\CycleSlotState;
+use App\Models\Enums\SubjectMode;
 use App\Models\StudyPlan;
 use App\Models\Subject;
 use App\Models\User;
@@ -191,6 +192,106 @@ test('a block can be called done before the target, and the next subject is anno
     // O tempo já cumprido fica: dar por encerrado não é apagar.
     expect($block->refresh()->isCompleted())->toBeTrue()
         ->and($block->accumulated_seconds)->toBe(900);
+});
+
+test('the cycle screen counts the subjects still in first contact', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+
+    foreach ([SubjectMode::Reading, SubjectMode::Reading, SubjectMode::Review] as $position => $mode) {
+        CycleSlot::factory()->create([
+            'study_plan_id' => $plan->id,
+            'subject_id' => Subject::factory()->for($plan)->create(['mode' => $mode])->id,
+            'position' => $position,
+        ]);
+    }
+
+    $this->actingAs($user)
+        ->get(route('cycle.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('cycle.readingCount', 2)
+            ->where('cycle.recommendedReading', Subject::RECOMMENDED_READING_SUBJECTS)
+            ->where('cycle.slots.0.subjectMode', 'reading')
+            ->where('cycle.slots.2.subjectMode', 'review'));
+});
+
+test('a paused seat does not count toward the first-contact load', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+    CycleSlot::factory()->paused()->create([
+        'study_plan_id' => $plan->id,
+        'subject_id' => Subject::factory()->for($plan)->create()->id,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('cycle.index'))
+        ->assertInertia(fn ($page) => $page->where('cycle.readingCount', 0));
+});
+
+test('a subject mode can be changed from the cycle screen', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+    $subject = Subject::factory()->for($plan)->create();
+    $slot = CycleSlot::factory()->create([
+        'study_plan_id' => $plan->id,
+        'subject_id' => $subject->id,
+        'block_minutes' => 90,
+    ]);
+
+    $this->actingAs($user)->from(route('cycle.index'))
+        ->put(route('subjects.mode', $subject), ['mode' => 'review'])
+        ->assertRedirect(route('cycle.index'));
+
+    expect($subject->refresh()->mode)->toBe(SubjectMode::Review)
+        ->and($slot->refresh()->block_minutes)->toBe(60);
+});
+
+test('the mode of another user subject cannot be changed', function () {
+    $user = User::factory()->create();
+    $foreign = Subject::factory()->create();
+
+    $this->actingAs($user)
+        ->put(route('subjects.mode', $foreign), ['mode' => 'done'])
+        ->assertForbidden();
+});
+
+test('the cycle can be trimmed to the most important subjects', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+
+    $slots = collect(range(0, 3))->map(fn (int $position) => CycleSlot::factory()->create([
+        'study_plan_id' => $plan->id,
+        'subject_id' => Subject::factory()->for($plan)->create()->id,
+        'position' => $position,
+    ]));
+
+    $this->actingAs($user)->from(route('cycle.index'))
+        ->post(route('cycle-slots.trim'), ['keep' => 2])
+        ->assertRedirect(route('cycle.index'));
+
+    expect($slots[1]->refresh()->state)->toBe(CycleSlotState::Active)
+        ->and($slots[2]->refresh()->state)->toBe(CycleSlotState::Paused);
+});
+
+test('trimming below two subjects is refused', function () {
+    $user = User::factory()->create();
+    StudyPlan::factory()->for($user)->active()->create();
+
+    $this->actingAs($user)->from(route('cycle.index'))
+        ->post(route('cycle-slots.trim'), ['keep' => 1])
+        ->assertSessionHasErrors('keep');
+});
+
+test('a subject can enter the cycle in immersion', function () {
+    $this->freezeTime();
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+    $subject = Subject::factory()->for($plan)->create();
+
+    $this->actingAs($user)->from(route('cycle.index'))
+        ->post(route('cycle-slots.store'), ['subject_id' => $subject->id, 'boost' => true]);
+
+    expect($plan->cycleSlots()->sole()->isBoosted())->toBeTrue();
 });
 
 test('a block from another user cannot be closed', function () {

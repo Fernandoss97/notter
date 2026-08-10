@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Enums\SubjectMode;
 use Database\Factories\SubjectFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,18 +16,27 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $study_plan_id
  * @property string $name
+ * @property SubjectMode $mode
  * @property int|null $goal_minutes
  * @property int $position
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'goal_minutes', 'position'])]
+#[Fillable(['name', 'mode', 'goal_minutes', 'position'])]
 class Subject extends Model
 {
     /** @use HasFactory<SubjectFactory> */
     use HasFactory;
 
+    /**
+     * Quantas matérias em primeiro contato o ciclo comporta bem (§4 da
+     * spec). Não é um limite — é o ponto a partir do qual a tela avisa que
+     * teoria nova demais ao mesmo tempo é o começo do ciclo inchado.
+     */
+    public const RECOMMENDED_READING_SUBJECTS = 6;
+
     protected $attributes = [
+        'mode' => 'reading',
         'position' => 0,
     ];
 
@@ -36,6 +46,7 @@ class Subject extends Model
     protected function casts(): array
     {
         return [
+            'mode' => SubjectMode::class,
             'goal_minutes' => 'integer',
             'position' => 'integer',
         ];

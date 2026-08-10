@@ -87,6 +87,45 @@ test('a block picks up where it stopped after the page is left and reopened', fu
         ->assertNoJavaScriptErrors();
 });
 
+test('finishing the theory of a subject frees room in the rotation', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create(['name' => 'Concurso XYZ']);
+
+    foreach (['Direito Constitucional', 'Português'] as $position => $name) {
+        CycleSlot::factory()->create([
+            'study_plan_id' => $plan->id,
+            'subject_id' => Subject::factory()->for($plan)->create(['name' => $name])->id,
+            'position' => $position,
+            'block_minutes' => 90,
+        ]);
+    }
+
+    $page = visit('/login')
+        ->fill('email', $user->email)
+        ->fill('password', 'password')
+        ->click('Log in')
+        ->assertNoJavaScriptErrors();
+
+    $page->navigate('/ciclo')
+        ->assertSee('90min')
+        ->assertNoJavaScriptErrors();
+
+    // Passar para revisão encolhe o bloco sozinho: é a folga assim
+    // liberada que abre espaço para uma disciplina nova entrar.
+    $page->click('[aria-label="Situação de Direito Constitucional"]')
+        ->click('[role="option"]:has-text("Revisão")')
+        ->assertSee('60min')
+        ->assertNoJavaScriptErrors();
+
+    // Encerrar tira do rodízio sem apagar: a disciplina continua na tela,
+    // pronta para voltar.
+    $page->click('[aria-label="Situação de Português"]')
+        ->click('[role="option"]:has-text("Encerrada")')
+        ->assertSee('Fora do rodízio')
+        ->assertSee('Português')
+        ->assertNoJavaScriptErrors();
+});
+
 test('a block can be called done ahead of the target and the rotation moves on', function () {
     $user = User::factory()->create();
     $plan = StudyPlan::factory()->for($user)->active()->create(['name' => 'Concurso XYZ']);

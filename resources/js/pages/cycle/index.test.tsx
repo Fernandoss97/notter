@@ -54,7 +54,9 @@ function slot(overrides: Partial<CycleSlotSummary> = {}): CycleSlotSummary {
         id: 1,
         subjectId: 10,
         subjectName: 'Direito Constitucional',
+        subjectMode: 'reading',
         blockMinutes: 60,
+        boosted: false,
         state: 'active',
         isCurrent: false,
         block: null,
@@ -82,6 +84,8 @@ function block(overrides: Partial<NonNullable<CycleSlotSummary['block']>> = {}) 
 const cycle: StudyCycle = {
     lap: 2,
     currentBlockId: 100,
+    readingCount: 2,
+    recommendedReading: 6,
     slots: [
         slot({
             id: 1,
@@ -237,6 +241,85 @@ describe('cycle screen', () => {
         expect(
             screen.getByText(/Nenhuma disciplina no rodízio ainda/),
         ).toHaveAttribute('data-visible', 'false');
+    });
+
+    it('warns when too many subjects are in first contact at once', () => {
+        const { rerender } = renderCycle({ readingCount: 7 });
+
+        expect(
+            screen.getByText(/7 disciplinas em leitura ao mesmo tempo/),
+        ).toHaveAttribute('data-visible', 'true');
+
+        rerender(
+            <CycleIndex
+                plans={[{ id: 1, name: 'Concurso XYZ' }]}
+                plan={plan}
+                cycle={{ ...cycle, readingCount: 6 }}
+                availableSubjects={[]}
+            />,
+        );
+
+        expect(
+            screen.getByText(/disciplinas em leitura ao mesmo tempo/),
+        ).toHaveAttribute('data-visible', 'false');
+    });
+
+    // Abrir um Select do Radix não funciona no jsdom (ele usa
+    // `hasPointerCapture`), então aqui se verifica o que a linha mostra;
+    // a troca em si é exercitada no teste de browser.
+    it('shows where each subject stands', () => {
+        renderCycle({
+            slots: [
+                slot({ id: 1, subjectMode: 'reading' }),
+                slot({
+                    id: 2,
+                    subjectName: 'Português',
+                    subjectMode: 'review',
+                }),
+            ],
+        });
+
+        expect(
+            screen.getByLabelText('Situação de Direito Constitucional'),
+        ).toHaveTextContent('Leitura');
+        expect(screen.getByLabelText('Situação de Português')).toHaveTextContent(
+            'Revisão',
+        );
+    });
+
+    it('marks a subject in its initial immersion', () => {
+        renderCycle({
+            slots: [slot({ id: 1, boosted: true, isCurrent: true })],
+        });
+
+        expect(screen.getByText('Imersão')).toBeInTheDocument();
+    });
+
+    it('offers no trimming while the rotation is already small', () => {
+        renderCycle({ slots: [slot({ id: 1 }), slot({ id: 2 })] });
+
+        expect(screen.queryByText('Enxugar ciclo')).not.toBeInTheDocument();
+    });
+
+    it('trims the rotation down to the first seats', async () => {
+        const user = userEvent.setup();
+        renderCycle({
+            slots: [slot({ id: 1 }), slot({ id: 2 }), slot({ id: 3 })],
+        });
+
+        await user.click(screen.getByText('Enxugar ciclo'));
+        await user.clear(screen.getByLabelText('Quantas disciplinas manter'));
+        await user.type(
+            screen.getByLabelText('Quantas disciplinas manter'),
+            '2',
+        );
+        await user.click(screen.getByRole('button', { name: 'Enxugar' }));
+
+        expect(post).toHaveBeenCalledWith(
+            expect.stringContaining('/ciclo/enxugar'),
+            { keep: 2 },
+            expect.anything(),
+        );
     });
 
     it('falls back to an invitation when there is no plan', () => {

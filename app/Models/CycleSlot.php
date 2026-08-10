@@ -21,11 +21,12 @@ use Illuminate\Support\Carbon;
  * @property int $subject_id
  * @property int $position
  * @property int $block_minutes
+ * @property Carbon|null $boost_until
  * @property CycleSlotState $state
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['subject_id', 'position', 'block_minutes', 'state'])]
+#[Fillable(['subject_id', 'position', 'block_minutes', 'boost_until', 'state'])]
 class CycleSlot extends Model
 {
     /** @use HasFactory<CycleSlotFactory> */
@@ -57,8 +58,19 @@ class CycleSlot extends Model
         return [
             'position' => 'integer',
             'block_minutes' => 'integer',
+            'boost_until' => 'date',
             'state' => CycleSlotState::class,
         ];
+    }
+
+    /**
+     * A disciplina ainda está na janela de imersão inicial (§4). A data é
+     * inclusiva: o reforço vale até o fim do dia marcado.
+     */
+    public function isBoosted(): bool
+    {
+        return $this->boost_until !== null
+            && ! $this->boost_until->isBefore(today());
     }
 
     /**

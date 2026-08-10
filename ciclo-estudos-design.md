@@ -174,6 +174,22 @@ bloco corrente = primeiro cycle_block aberto da volta corrente,
   momento em que a intercalação fala com quem estuda; sem isso o rodízio
   anda calado. O aviso se soma ao da operação em vez de substituí-lo.
 
+**Crescimento do ciclo (§4).** Mudar o modo da disciplina ajusta a cadeira
+na mesma operação, e não numa segunda edição que o usuário teria de lembrar
+de fazer: `review` encolhe o bloco ao mínimo e cancela o reforço, `done`
+pausa a cadeira, `reading` a devolve ao rodízio. O caminho de volta não
+restitui os minutos sozinho — quem reabre a teoria de uma matéria sabe
+melhor que o sistema quanto tempo ela vai pedir agora.
+
+O reforço de matéria nova é uma **data de validade** (`boost_until`, duas
+semanas), não um sinalizador de prioridade: um peso declarado sem prazo
+nunca é revisto, que foi exatamente o que condenou `subjects.priority`.
+
+Enxugar mantém as primeiras cadeiras da fila e pausa o resto — a ordem do
+rodízio já diz o que importa mais, e pedir a mesma informação de novo seria
+fazer o usuário se repetir. O piso é duas disciplinas: abaixo disso não é
+enxugar um rodízio, é desmontá-lo.
+
 **Atribuição de tempo:** a sessão é carimbada com o bloco em
 `StartFocusSession` — não no encerramento, senão trocar de disciplina no
 meio reescreveria o passado. Estudar uma disciplina fora da vez é legítimo
@@ -261,7 +277,7 @@ colado no foco porque é o que responde "o que agora".
 | Fase | Entrega | Cobre |
 |---|---|---|
 | **F1** ✅ | `cycle_slots` + `cycle_blocks` + tela `/ciclo` com ordem manual + integração no foco | §1, §3, §6 — o módulo já é útil aqui |
-| **F2** | `subjects.mode`, `boost_until`, pausar slot, modo enxuto | §4 |
+| **F2** ✅ | `subjects.mode`, `boost_until`, pausar slot, modo enxuto | §4 |
 | **F3** | `pages_read` nas três camadas + aderência no dashboard | §5 |
 | **F4** | `subjects.area`, assistente de montagem, aviso de intercalação | §2, §3 |
 

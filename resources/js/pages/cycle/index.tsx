@@ -6,6 +6,16 @@ import { PageHeader } from '@/components/page-header';
 import { Panel } from '@/components/panel';
 import { PlanSwitcher } from '@/components/plan-switcher';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ProgressBar } from '@/components/ui/progress-bar';
@@ -17,21 +27,25 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { formatDurationMinutes } from '@/lib/format-duration';
+import { SUBJECT_MODE_LABEL } from '@/lib/study-labels';
 import { cn } from '@/lib/utils';
+import { index } from '@/routes/cycle';
 import { complete as completeBlock } from '@/routes/cycle-blocks';
 import {
     destroy as destroySlot,
     reorder as reorderSlots,
     store as storeSlot,
+    trim as trimCycle,
     update as updateSlot,
 } from '@/routes/cycle-slots';
-import { index } from '@/routes/cycle';
 import { show as showFocus } from '@/routes/focus';
 import { index as planIndex } from '@/routes/plans';
+import { mode as updateSubjectMode } from '@/routes/subjects';
 import type {
     CycleSlotSummary,
     PlanSummary,
     StudyCycle,
+    SubjectMode,
 } from '@/types/study';
 
 /** Acima disto a tela avisa, mas não impede — ver CycleSlot::MAX. */
@@ -69,6 +83,7 @@ export default function CycleIndex({
         'transition-opacity duration-base ease-out',
         busy && 'opacity-50',
     );
+    const crowded = cycle.readingCount > cycle.recommendedReading;
 
     return (
         <>
@@ -83,12 +98,23 @@ export default function CycleIndex({
                                 : `${plan.name} · volta ${cycle.lap} · ${done} de ${active.length} blocos`
                         }
                         actions={
-                            <Button variant="outline" asChild>
-                                <Link href={showFocus()}>Ir para o foco</Link>
-                            </Button>
+                            <>
+                                <TrimDialog activeCount={active.length} />
+                                <Button variant="outline" asChild>
+                                    <Link href={showFocus()}>
+                                        Ir para o foco
+                                    </Link>
+                                </Button>
+                            </>
                         }
                     />
                 </div>
+
+                <CrowdedHint
+                    visible={crowded}
+                    reading={cycle.readingCount}
+                    recommended={cycle.recommendedReading}
+                />
 
                 <PlanSwitcher
                     plans={plans}
@@ -137,6 +163,107 @@ function NoPlanPanel() {
                 <Link href={planIndex()}>Criar plano de estudos</Link>
             </Button>
         </Panel>
+    );
+}
+
+/**
+ * O sinal de ciclo inchado, antes de a volta ficar longa demais: teoria
+ * nova é o que mais cansa, e é dela que o método pede para não exagerar.
+ * Fica montado e escondido para não empurrar a lista ao aparecer.
+ */
+function CrowdedHint({
+    visible,
+    reading,
+    recommended,
+}: {
+    visible: boolean;
+    reading: number;
+    recommended: number;
+}) {
+    return (
+        <p
+            data-slot="cycle-crowded"
+            data-visible={visible}
+            aria-hidden={!visible}
+            inert={!visible || undefined}
+            hidden={!visible}
+            className={cn(
+                'rounded-md border border-status-warning/30 bg-status-warning/10 px-4 py-3 text-sm text-status-warning',
+                !visible && 'hidden',
+            )}
+        >
+            {reading} disciplinas em leitura ao mesmo tempo — o recomendado é
+            até {recommended}. Passe para revisão as que já tiveram a teoria
+            vista, ou enxugue o ciclo para nivelar antes de seguir.
+        </p>
+    );
+}
+
+/**
+ * Enxugar é o nivelamento do método: reduzir temporariamente o número de
+ * matérias para mergulhar nas mais importantes. Quem fica são as primeiras
+ * da fila — a ordem do rodízio já diz o que importa mais, e pedir a mesma
+ * informação de novo seria fazer o usuário se repetir.
+ */
+function TrimDialog({ activeCount }: { activeCount: number }) {
+    const [open, setOpen] = useState(false);
+    const [keep, setKeep] = useState('4');
+
+    if (activeCount < 3) {
+        return null;
+    }
+
+    function submit(event: FormEvent) {
+        event.preventDefault();
+
+        router.post(
+            trimCycle().url,
+            { keep: Number(keep) },
+            { preserveScroll: true, onSuccess: () => setOpen(false) },
+        );
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline">Enxugar ciclo</Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Enxugar o ciclo</DialogTitle>
+                    <DialogDescription>
+                        As disciplinas que saírem ficam fora do rodízio, não
+                        apagadas: trilha, revisões e tempo estudado continuam
+                        onde estão, e elas voltam quando você quiser. Ficam as
+                        primeiras da fila.
+                    </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={submit} className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-2">
+                        <Label htmlFor="trim_keep">
+                            Quantas disciplinas manter
+                        </Label>
+                        <Input
+                            id="trim_keep"
+                            type="number"
+                            min={2}
+                            max={activeCount}
+                            value={keep}
+                            onChange={(event) => setKeep(event.target.value)}
+                            className="w-24"
+                        />
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button" variant="secondary">
+                                Cancelar
+                            </Button>
+                        </DialogClose>
+                        <Button type="submit">Enxugar</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
     );
 }
 
@@ -232,6 +359,7 @@ function SlotRow({
                         {slot.subjectName}
                     </span>
                     <StatusBadge slot={slot} />
+                    {slot.boosted && <Badge tone="focus">Imersão</Badge>}
                 </div>
                 <span className="text-xs text-muted-foreground">
                     {block
@@ -250,6 +378,7 @@ function SlotRow({
             )}
 
             <div className="flex shrink-0 items-center gap-1">
+                <ModeSelect slot={slot} />
                 {slot.isCurrent && (
                     <Button variant="ghost" size="sm" asChild>
                         <Link href={showFocus()}>Estudar</Link>
@@ -304,6 +433,54 @@ function ReorderButton({
         >
             {children}
         </button>
+    );
+}
+
+/**
+ * O pé em que a disciplina está. Mudar para revisão encolhe o bloco dela
+ * no rodízio, e encerrar a tira de cena — o servidor cuida disso, para não
+ * virar uma segunda edição que o usuário teria de lembrar de fazer.
+ */
+function ModeSelect({ slot }: { slot: CycleSlotSummary }) {
+    const [pending, setPending] = useState<SubjectMode | null>(null);
+    const mode = pending ?? slot.subjectMode;
+
+    function change(next: string) {
+        setPending(next as SubjectMode);
+
+        router.put(
+            updateSubjectMode(slot.subjectId).url,
+            { mode: next },
+            {
+                preserveScroll: true,
+                showProgress: false,
+                onFinish: () => setPending(null),
+            },
+        );
+    }
+
+    return (
+        <Select value={mode} onValueChange={change}>
+            <SelectTrigger
+                size="sm"
+                aria-label={`Situação de ${slot.subjectName}`}
+                className="w-28"
+            >
+                <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+                {(
+                    Object.entries(SUBJECT_MODE_LABEL) as [
+                        SubjectMode,
+                        string,
+                    ][]
+                ).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                        {label}
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
     );
 }
 
@@ -430,7 +607,11 @@ function SlotSettings({ slot }: { slot: CycleSlotSummary }) {
 }
 
 function AddSlotPanel({ subjects }: { subjects: { id: number; name: string }[] }) {
-    const form = useForm({ subject_id: '', block_minutes: '60' });
+    const form = useForm({
+        subject_id: '',
+        block_minutes: '60',
+        boost: false,
+    });
     const overRecommended =
         Number(form.data.block_minutes) > RECOMMENDED_MAX_BLOCK_MINUTES;
 
@@ -440,6 +621,7 @@ function AddSlotPanel({ subjects }: { subjects: { id: number; name: string }[] }
         form.transform((data) => ({
             subject_id: Number(data.subject_id),
             block_minutes: Number(data.block_minutes),
+            boost: data.boost,
         }));
 
         form.post(storeSlot().url, {
@@ -514,9 +696,36 @@ function AddSlotPanel({ subjects }: { subjects: { id: number; name: string }[] }
                         )}
                     </div>
 
+                    <label className="flex items-center gap-2 pb-2 text-sm text-fg-2">
+                        <input
+                            type="checkbox"
+                            checked={form.data.boost}
+                            onChange={(event) =>
+                                form.setData('boost', event.target.checked)
+                            }
+                            className="size-4 rounded-[4px] border-border-strong accent-focus-500"
+                        />
+                        Imersão inicial
+                    </label>
+
                     <Button type="submit" disabled={form.processing}>
                         Adicionar
                     </Button>
+
+                    <p
+                        data-slot="cycle-boost-hint"
+                        aria-hidden={!form.data.boost}
+                        inert={!form.data.boost || undefined}
+                        hidden={!form.data.boost}
+                        className={cn(
+                            'w-full text-xs text-muted-foreground',
+                            !form.data.boost && 'hidden',
+                        )}
+                    >
+                        Matéria nova entra com bloco maior por duas semanas, e
+                        depois volta a valer o que todas valem — o reforço tem
+                        prazo para não virar uma prioridade eterna.
+                    </p>
 
                     <p
                         data-slot="cycle-block-warning"

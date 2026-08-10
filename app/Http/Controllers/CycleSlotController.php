@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Actions\Study\AddCycleSlot;
 use App\Actions\Study\Exceptions\InvalidCycleTransitionException;
 use App\Actions\Study\ReorderCycleSlots;
+use App\Actions\Study\TrimCycle;
 use App\Http\Requests\Study\ReorderCycleSlotsRequest;
 use App\Http\Requests\Study\StoreCycleSlotRequest;
+use App\Http\Requests\Study\TrimCycleRequest;
 use App\Http\Requests\Study\UpdateCycleSlotRequest;
 use App\Models\CycleSlot;
 use App\Models\StudyPlan;
@@ -31,6 +33,7 @@ class CycleSlotController extends Controller
                 $plan,
                 $subject,
                 $request->filled('block_minutes') ? $request->integer('block_minutes') : null,
+                $request->boolean('boost'),
             );
         } catch (InvalidCycleTransitionException $exception) {
             Inertia::flash('toast', ['type' => 'error', 'message' => $exception->getMessage()]);
@@ -68,6 +71,24 @@ class CycleSlotController extends Controller
         $this->authorizeSlot($request, $cycleSlot);
 
         $cycleSlot->delete();
+
+        return back();
+    }
+
+    /**
+     * Enxuga o ciclo às N primeiras disciplinas (§4). É o nivelamento de
+     * quem deixou o rodízio crescer demais: as demais só saem de cena, e
+     * voltam uma a uma quando houver fôlego.
+     */
+    public function trim(TrimCycleRequest $request, TrimCycle $action): RedirectResponse
+    {
+        $plan = $request->user()->activeStudyPlan;
+
+        if ($plan instanceof StudyPlan) {
+            $action->handle($plan, $request->integer('keep'));
+
+            Inertia::flash('toast', ['type' => 'success', 'message' => __('Ciclo enxugado.')]);
+        }
 
         return back();
     }

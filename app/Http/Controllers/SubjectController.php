@@ -2,7 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Study\SetSubjectMode;
 use App\Http\Requests\Study\StoreSubjectRequest;
+use App\Http\Requests\Study\UpdateSubjectModeRequest;
+use App\Models\Enums\SubjectMode;
+use App\Models\Subject;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 
@@ -29,5 +33,24 @@ class SubjectController extends Controller
         ]);
 
         return to_route('plans.index');
+    }
+
+    /**
+     * Muda o pé em que a disciplina está — leitura, revisão ou encerrada.
+     *
+     * A Action mexe na cadeira do rodízio junto, porque é essa a regra: a
+     * matéria que sai da teoria ocupa menos tempo, e é a folga liberada
+     * que abre espaço para uma disciplina nova.
+     */
+    public function mode(
+        UpdateSubjectModeRequest $request,
+        Subject $subject,
+        SetSubjectMode $action,
+    ): RedirectResponse {
+        abort_unless($subject->studyPlan->user_id === $request->user()->id, 403);
+
+        $action->handle($subject, SubjectMode::from($request->string('mode')->toString()));
+
+        return back();
     }
 }

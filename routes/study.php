@@ -28,6 +28,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('plano/{plan}', [StudyPlanController::class, 'update'])->name('plans.update');
     Route::post('plano/{plan}/activate', [StudyPlanController::class, 'activate'])->name('plans.activate');
     Route::post('plano/subjects', [SubjectController::class, 'store'])->name('subjects.store');
+    Route::put('plano/subjects/{subject}/modo', [SubjectController::class, 'mode'])->name('subjects.mode');
     Route::post('plano/topics', [TopicController::class, 'store'])->name('topics.store');
     Route::post('plano/topics/{topic}/complete', [TopicController::class, 'complete'])->name('topics.complete');
     Route::post('plano/topics/{topic}/uncomplete', [TopicController::class, 'uncomplete'])->name('topics.uncomplete');
@@ -36,6 +37,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('ciclo', [CycleController::class, 'index'])->name('cycle.index');
     Route::post('ciclo/cadeiras', [CycleSlotController::class, 'store'])->name('cycle-slots.store');
     Route::post('ciclo/cadeiras/ordem', [CycleSlotController::class, 'reorder'])->name('cycle-slots.reorder');
+    Route::post('ciclo/enxugar', [CycleSlotController::class, 'trim'])->name('cycle-slots.trim');
     Route::put('ciclo/cadeiras/{cycleSlot}', [CycleSlotController::class, 'update'])->name('cycle-slots.update');
     Route::delete('ciclo/cadeiras/{cycleSlot}', [CycleSlotController::class, 'destroy'])->name('cycle-slots.destroy');
     Route::post('ciclo/blocos/{cycleBlock}/complete', [CycleBlockController::class, 'complete'])->name('cycle-blocks.complete');
