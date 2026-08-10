@@ -29,6 +29,7 @@ export function SubjectEvolutionTable({
                     <th className={th}>Evolução</th>
                     <th className={cn(th, 'text-right')}>Questões</th>
                     <th className={cn(th, 'text-right')}>Acertos</th>
+                    <th className={cn(th, 'text-right')}>Páginas</th>
                     <th className={cn(th, 'text-right')}>Desempenho</th>
                 </tr>
             </thead>
@@ -70,6 +71,14 @@ export function SubjectEvolutionTable({
                             className={cn(
                                 td,
                                 'text-right font-mono tabular-nums',
+                            )}
+                        >
+                            {row.pages > 0 ? row.pages : '—'}
+                        </td>
+                        <td
+                            className={cn(
+                                td,
+                                'text-right font-mono tabular-nums',
                                 accuracyColor(row.accuracy),
                             )}
                         >
@@ -99,6 +108,11 @@ export function SubjectEvolutionTable({
                     <td className={cn(td, 'text-right font-mono tabular-nums')}>
                         {evolution.totals.exercises > 0
                             ? evolution.totals.correct
+                            : '—'}
+                    </td>
+                    <td className={cn(td, 'text-right font-mono tabular-nums')}>
+                        {evolution.totals.pages > 0
+                            ? evolution.totals.pages
                             : '—'}
                     </td>
                     <td

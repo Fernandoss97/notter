@@ -105,7 +105,7 @@ class StudyTrackController extends Controller
      * trilha). O número é derivado da posição na fila, não armazenado:
      * assim ele nunca fica furado depois de uma exclusão.
      *
-     * @return array<int, array{cycle: int, done: int, total: int, exercises: int, correct: int, accuracy: int|null, tasks: array<int, array{id: int, number: int, name: string, subjectName: string, completed: bool, completedOn: string|null, reviewStatus: string|null, exercisesTotal: int, exercisesCorrect: int, accuracy: int|null}>}>
+     * @return array<int, array{cycle: int, done: int, total: int, exercises: int, correct: int, accuracy: int|null, pages: int, tasks: array<int, array{id: int, number: int, name: string, subjectName: string, completed: bool, completedOn: string|null, reviewStatus: string|null, exercisesTotal: int, exercisesCorrect: int, pagesRead: int, accuracy: int|null}>}>
      */
     private function cycles(StudyPlan $plan): array
     {
@@ -129,6 +129,7 @@ class StudyTrackController extends Controller
                         'reviewStatus' => $topic->reviewStatus(),
                         'exercisesTotal' => $topic->exercises_total,
                         'exercisesCorrect' => $topic->exercises_correct,
+                        'pagesRead' => $topic->pages_read,
                         'accuracy' => $topic->accuracyPercent(),
                     ],
                 ];
@@ -146,6 +147,7 @@ class StudyTrackController extends Controller
                     'exercises' => $exercises,
                     'correct' => $correct,
                     'accuracy' => $this->percent($correct, $exercises),
+                    'pages' => (int) $tasks->sum('pagesRead'),
                     'tasks' => $tasks->all(),
                 ];
             })

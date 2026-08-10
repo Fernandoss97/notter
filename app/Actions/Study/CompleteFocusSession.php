@@ -29,6 +29,7 @@ class CompleteFocusSession
         ?ActivityType $activityType = null,
         ?int $exercisesTotal = null,
         ?int $exercisesCorrect = null,
+        ?int $pagesRead = null,
         ?string $notes = null,
     ): StudySession {
         if ($session->state === FocusSessionState::Completed) {
@@ -52,6 +53,7 @@ class CompleteFocusSession
             $attributes['topic_id'] = $topic?->id;
             $attributes['exercises_total'] = $exercisesTotal;
             $attributes['exercises_correct'] = $exercisesCorrect;
+            $attributes['pages_read'] = $pagesRead;
         }
 
         if ($activityType instanceof ActivityType) {
@@ -62,15 +64,23 @@ class CompleteFocusSession
             $attributes['notes'] = $notes;
         }
 
-        DB::transaction(function () use ($session, $attributes, $subject, $topic, $exercisesTotal, $exercisesCorrect): void {
+        DB::transaction(function () use ($session, $attributes, $subject, $topic, $exercisesTotal, $exercisesCorrect, $pagesRead): void {
             $session->update($attributes);
 
-            // As questões da sessão sobem para a tarefa, que é onde o total
-            // acumulado vive (F2). Sem disciplina confirmada não há o que
-            // somar: o vínculo com o tópico não foi confirmado no
+            // As questões e as páginas da sessão sobem para a tarefa, que é
+            // onde o total acumulado vive (F2). Sem disciplina confirmada não
+            // há o que somar: o vínculo com o tópico não foi confirmado no
             // encerramento.
-            if ($subject instanceof Subject && $topic instanceof Topic && $exercisesTotal) {
+            if (! $subject instanceof Subject || ! $topic instanceof Topic) {
+                return;
+            }
+
+            if ($exercisesTotal) {
                 $topic->addExercises($exercisesTotal, $exercisesCorrect ?? 0);
+            }
+
+            if ($pagesRead) {
+                $topic->addPages($pagesRead);
             }
         });
 

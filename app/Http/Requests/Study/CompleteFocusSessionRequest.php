@@ -25,6 +25,7 @@ class CompleteFocusSessionRequest extends FormRequest
             'activity_type' => ['nullable', Rule::enum(ActivityType::class)],
             'exercises_total' => ['nullable', 'integer', 'min:0'],
             'exercises_correct' => ['nullable', 'integer', 'min:0', 'lte:exercises_total'],
+            'pages_read' => ['nullable', 'integer', 'min:0', 'max:99999'],
             'notes' => ['nullable', 'string', 'max:5000'],
         ];
     }

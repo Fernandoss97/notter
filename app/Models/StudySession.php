@@ -32,6 +32,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $ended_at
  * @property int|null $exercises_total
  * @property int|null $exercises_correct
+ * @property int|null $pages_read
  * @property string|null $notes
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -40,7 +41,7 @@ use Illuminate\Support\Carbon;
     'user_id', 'study_plan_id', 'subject_id', 'topic_id', 'cycle_block_id', 'activity_type', 'state', 'phase',
     'planned_seconds', 'accumulated_seconds', 'phase_accumulated_seconds', 'break_seconds',
     'completed_cycles', 'started_at', 'resumed_at', 'ended_at',
-    'exercises_total', 'exercises_correct', 'notes',
+    'exercises_total', 'exercises_correct', 'pages_read', 'notes',
 ])]
 class StudySession extends Model
 {
@@ -87,6 +88,7 @@ class StudySession extends Model
             'ended_at' => 'datetime',
             'exercises_total' => 'integer',
             'exercises_correct' => 'integer',
+            'pages_read' => 'integer',
         ];
     }
 

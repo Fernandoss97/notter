@@ -202,6 +202,7 @@ class FocusSessionController extends Controller
                 $request->filled('activity_type') ? ActivityType::from($request->string('activity_type')->toString()) : null,
                 $request->filled('exercises_total') ? $request->integer('exercises_total') : null,
                 $request->filled('exercises_correct') ? $request->integer('exercises_correct') : null,
+                $request->filled('pages_read') ? $request->integer('pages_read') : null,
                 // `filled()` e não `string()`: sem a chave, `string()`
                 // devolve '' e apagaria as notas que o autosave gravou
                 // durante a sessão.

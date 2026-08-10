@@ -1,5 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
+import { CycleAdherencePanel } from '@/components/cycle-adherence';
 import { Page } from '@/components/page';
 import { Panel } from '@/components/panel';
 import { PlanSwitcher } from '@/components/plan-switcher';
@@ -16,6 +17,7 @@ import { show as showFocus } from '@/routes/focus';
 import { index as showHistory } from '@/routes/history';
 import { index as showPlan } from '@/routes/plans';
 import type {
+    CycleAdherence,
     DashboardPlan,
     DashboardStats,
     PlanSummary,
@@ -31,6 +33,7 @@ interface DashboardProps {
     recentDays: RecentDay[];
     evolution: SubjectEvolution | null;
     pace: TrackPace | null;
+    cycle: CycleAdherence | null;
 }
 
 /**
@@ -50,6 +53,7 @@ export default function Dashboard({
     recentDays,
     evolution,
     pace,
+    cycle = null,
 }: DashboardProps) {
     const dailyGoal =
         stats.weekGoalMinutes > 0 ? Math.round(stats.weekGoalMinutes / 7) : 0;
@@ -170,6 +174,10 @@ export default function Dashboard({
                             </div>
 
                             {pace && <TrackPacePanel pace={pace} />}
+
+                            {cycle && cycle.rows.length > 0 && (
+                                <CycleAdherencePanel cycle={cycle} />
+                            )}
 
                             <Panel title="Últimos 7 dias">
                                 <WeeklyBars

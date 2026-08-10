@@ -19,10 +19,11 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $completed_at
  * @property int $exercises_total
  * @property int $exercises_correct
+ * @property int $pages_read
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'cycle', 'position', 'completed_at', 'exercises_total', 'exercises_correct'])]
+#[Fillable(['name', 'cycle', 'position', 'completed_at', 'exercises_total', 'exercises_correct', 'pages_read'])]
 class Topic extends Model
 {
     /** @use HasFactory<TopicFactory> */
@@ -33,6 +34,7 @@ class Topic extends Model
         'position' => 0,
         'exercises_total' => 0,
         'exercises_correct' => 0,
+        'pages_read' => 0,
     ];
 
     /**
@@ -46,6 +48,7 @@ class Topic extends Model
             'completed_at' => 'datetime',
             'exercises_total' => 'integer',
             'exercises_correct' => 'integer',
+            'pages_read' => 'integer',
         ];
     }
 
@@ -105,6 +108,19 @@ class Topic extends Model
 
         if ($correct > 0) {
             $this->increment('exercises_correct', $correct);
+        }
+    }
+
+    /**
+     * Soma as páginas lidas numa sessão ao total da tarefa. Mesmo raciocínio
+     * de addExercises(): a tarefa acumula ao longo de várias sessões e de
+     * registros feitos na mão, e a soma acontece no banco porque a instância
+     * carregada no início da sessão pode estar desatualizada.
+     */
+    public function addPages(int $pages): void
+    {
+        if ($pages > 0) {
+            $this->increment('pages_read', $pages);
         }
     }
 

@@ -155,6 +155,28 @@ export type SubjectEvolutionRow = {
     correct: number;
     /** Percentual de acerto, ou null quando não há questão resolvida. */
     accuracy: number | null;
+    pages: number;
+};
+
+/**
+ * O que o ciclo prometeu contra o que aconteceu, disciplina a disciplina.
+ * A comparação é entre fatias e não entre minutos: quem estudou metade do
+ * planejado cumpriu o rodízio se distribuiu essa metade na proporção certa.
+ */
+export type CycleAdherenceRow = {
+    id: number;
+    name: string;
+    targetPercent: number;
+    actualPercent: number;
+    minutes: number;
+    /** Negativo é a matéria que está levando menos tempo do que pediu. */
+    drift: number;
+};
+
+export type CycleAdherence = {
+    closedLaps: number;
+    blocksDone: number;
+    rows: CycleAdherenceRow[];
 };
 
 export type SubjectEvolution = {
@@ -169,6 +191,7 @@ export type RecentSession = {
     activityType: ActivityType;
     exercises: number | null;
     accuracy: number | null;
+    pages: number | null;
 };
 
 export type HistoryPeriod = '7' | '30' | 'all';
@@ -192,6 +215,7 @@ export type TrackTask = {
     reviewStatus: ReviewStatus;
     exercisesTotal: number;
     exercisesCorrect: number;
+    pagesRead: number;
     /** Percentual de acerto, ou null quando não há questão registrada. */
     accuracy: number | null;
 };
@@ -203,6 +227,7 @@ export type TrackCycle = {
     exercises: number;
     correct: number;
     accuracy: number | null;
+    pages: number;
     tasks: TrackTask[];
 };
 

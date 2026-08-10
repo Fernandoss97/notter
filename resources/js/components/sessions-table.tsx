@@ -8,6 +8,7 @@ export interface SessionRow {
     type: string;
     exercises: number | null;
     accuracy: number | null;
+    pages: number | null;
 }
 
 export function SessionsTable({ rows }: { rows: SessionRow[] }) {
@@ -25,6 +26,7 @@ export function SessionsTable({ rows }: { rows: SessionRow[] }) {
                     <th className={th}>Tipo</th>
                     <th className={cn(th, 'text-right')}>Exercícios</th>
                     <th className={cn(th, 'text-right')}>Acerto</th>
+                    <th className={cn(th, 'text-right')}>Páginas</th>
                 </tr>
             </thead>
             <tbody>
@@ -57,6 +59,14 @@ export function SessionsTable({ rows }: { rows: SessionRow[] }) {
                             )}
                         >
                             {row.accuracy !== null ? `${row.accuracy}%` : '—'}
+                        </td>
+                        <td
+                            className={cn(
+                                td,
+                                'text-right font-mono tabular-nums',
+                            )}
+                        >
+                            {row.pages ?? '—'}
                         </td>
                     </tr>
                 ))}

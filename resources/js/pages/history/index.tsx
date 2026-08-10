@@ -48,6 +48,7 @@ export default function HistoryIndex({
         type: ACTIVITY_TYPE_LABEL[session.activityType],
         exercises: session.exercises,
         accuracy: session.accuracy,
+        pages: session.pages,
     }));
 
     // O `value` dos controles vem do servidor; sem estado pendente o clique

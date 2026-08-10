@@ -271,6 +271,7 @@ function CyclePanel({ cycle }: { cycle: TrackCycle }) {
                         {cycle.done} de {cycle.total} tarefas
                         {cycle.exercises > 0 &&
                             ` · ${cycle.correct}/${cycle.exercises} questões · ${cycle.accuracy}% de acerto`}
+                        {cycle.pages > 0 && ` · ${cycle.pages} páginas`}
                     </div>
                 </div>
                 <div className="w-40">
@@ -355,6 +356,7 @@ function TaskRow({ task }: { task: TrackTask }) {
                     {task.completedOn && ` · concluída em ${task.completedOn}`}
                     {task.exercisesTotal > 0 &&
                         ` · ${task.exercisesCorrect}/${task.exercisesTotal} questões · ${task.accuracy}%`}
+                    {task.pagesRead > 0 && ` · ${task.pagesRead} páginas`}
                 </span>
             </div>
 
@@ -377,6 +379,7 @@ function ExercisesDialog({ task }: { task: TrackTask }) {
     const form = useForm({
         exercises_total: String(task.exercisesTotal),
         exercises_correct: String(task.exercisesCorrect),
+        pages_read: String(task.pagesRead),
     });
 
     function submit(event: FormEvent) {
@@ -385,6 +388,7 @@ function ExercisesDialog({ task }: { task: TrackTask }) {
         form.transform((data) => ({
             exercises_total: Number(data.exercises_total || 0),
             exercises_correct: Number(data.exercises_correct || 0),
+            pages_read: Number(data.pages_read || 0),
         }));
 
         form.put(updateExercises(task.id).url, {
@@ -402,6 +406,7 @@ function ExercisesDialog({ task }: { task: TrackTask }) {
                 form.setData({
                     exercises_total: String(task.exercisesTotal),
                     exercises_correct: String(task.exercisesCorrect),
+                    pages_read: String(task.pagesRead),
                 });
             }}
         >
@@ -416,10 +421,11 @@ function ExercisesDialog({ task }: { task: TrackTask }) {
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Questões da tarefa</DialogTitle>
+                    <DialogTitle>Questões e páginas da tarefa</DialogTitle>
                     <DialogDescription>
-                        {task.name} · o total acumula as sessões encerradas com
-                        questões; salvar aqui substitui o número.
+                        {task.name} · os totais acumulam as sessões encerradas
+                        com questões ou páginas; salvar aqui substitui os
+                        números.
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={submit} className="flex flex-col gap-4">
@@ -468,6 +474,30 @@ function ExercisesDialog({ task }: { task: TrackTask }) {
                             {form.errors.exercises_correct && (
                                 <p className="text-sm text-destructive">
                                     {form.errors.exercises_correct}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="flex flex-1 flex-col gap-2">
+                            <Label htmlFor={`pages_${task.id}`}>
+                                Páginas lidas
+                            </Label>
+                            <Input
+                                id={`pages_${task.id}`}
+                                name="pages_read"
+                                type="number"
+                                min={0}
+                                value={form.data.pages_read}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'pages_read',
+                                        event.target.value,
+                                    )
+                                }
+                            />
+                            {form.errors.pages_read && (
+                                <p className="text-sm text-destructive">
+                                    {form.errors.pages_read}
                                 </p>
                             )}
                         </div>

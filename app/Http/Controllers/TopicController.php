@@ -61,8 +61,9 @@ class TopicController extends Controller
     }
 
     /**
-     * Registro manual das questões da tarefa: quem resolveu o PDF sem
-     * cronômetro tem o mesmo lugar para anotar que a sessão alimenta.
+     * Registro manual das questões e das páginas da tarefa: quem leu e
+     * resolveu o PDF sem cronômetro tem o mesmo lugar para anotar que a
+     * sessão alimenta.
      */
     public function exercises(UpdateTopicExercisesRequest $request, Topic $topic): RedirectResponse
     {

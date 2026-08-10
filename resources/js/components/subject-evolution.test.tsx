@@ -15,6 +15,7 @@ function row(
         exercises: 40,
         correct: 30,
         accuracy: 75,
+        pages: 0,
         ...overrides,
     };
 }
@@ -31,6 +32,7 @@ function evolution(
             exercises: 40,
             correct: 30,
             accuracy: 75,
+            pages: 0,
         },
         ...overrides,
     };
@@ -73,6 +75,7 @@ describe('SubjectEvolutionTable', () => {
                         exercises: 50,
                         correct: 34,
                         accuracy: 68,
+                        pages: 0,
                     },
                 })}
             />,
@@ -115,6 +118,7 @@ describe('SubjectEvolutionTable', () => {
                         exercises: 0,
                         correct: 0,
                         accuracy: null,
+                        pages: 0,
                     },
                 })}
             />,

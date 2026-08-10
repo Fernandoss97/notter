@@ -248,8 +248,18 @@ continua escolhendo a tarefa.
 
 ### `/dashboard` (alterada)
 - Aderência ao ciclo: tempo real por disciplina contra o alvo do rodízio.
-  É a métrica que revela a disciplina sendo evitada — hoje invisível.
-- Voltas concluídas, tempo médio por volta, páginas lidas por disciplina.
+  É a métrica que revela a disciplina sendo evitada — no plano, quem foge de
+  uma matéria simplesmente não conclui nada nela, e isso se confunde com
+  "ainda não cheguei lá".
+- A comparação é entre **fatias**, não entre minutos absolutos: quem estudou
+  metade do planejado no mês cumpriu o rodízio se distribuiu essa metade na
+  proporção certa. Minutos absolutos só diriam que estudou pouco, coisa que
+  a meta semanal já diz logo acima.
+- Voltas fechadas (nenhuma cadeira ativa deixou bloco em aberto) e blocos
+  concluídos; páginas lidas por disciplina na tabela de evolução.
+- `subjects.pages_read` foi descartado: o total por disciplina é a soma das
+  tarefas, e uma terceira cópia do mesmo número só teria como render
+  divergência.
 
 ### Sidebar
 `Foco → Ciclo → Progresso → Trilha → Plano → Histórico`. O ciclo fica
@@ -278,7 +288,7 @@ colado no foco porque é o que responde "o que agora".
 |---|---|---|
 | **F1** ✅ | `cycle_slots` + `cycle_blocks` + tela `/ciclo` com ordem manual + integração no foco | §1, §3, §6 — o módulo já é útil aqui |
 | **F2** ✅ | `subjects.mode`, `boost_until`, pausar slot, modo enxuto | §4 |
-| **F3** | `pages_read` nas três camadas + aderência no dashboard | §5 |
+| **F3** ✅ | `pages_read` nas três camadas + aderência no dashboard | §5 |
 | **F4** | `subjects.area`, assistente de montagem, aviso de intercalação | §2, §3 |
 
 Testes por fase, conforme o `CLAUDE.md`: Unit para as Actions, Feature

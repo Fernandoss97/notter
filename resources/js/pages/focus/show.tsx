@@ -752,6 +752,7 @@ function CompleteSessionDialog({
         activity_type: session.activityType ?? ('exercises' as ActivityType),
         exercises_total: '',
         exercises_correct: '',
+        pages_read: '',
     });
 
     const subject = plan.subjects.find(
@@ -767,6 +768,7 @@ function CompleteSessionDialog({
             activity_type: data.activity_type,
             exercises_total: data.exercises_total || null,
             exercises_correct: data.exercises_correct || null,
+            pages_read: data.pages_read || null,
         }));
 
         form.post(completeSession().url, { preserveScroll: true });
@@ -870,7 +872,7 @@ function CompleteSessionDialog({
                         <InputError message={form.errors.activity_type} />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                         <div className="flex flex-col gap-2">
                             <Label htmlFor="exercises_total">
                                 Exercícios resolvidos
@@ -907,6 +909,27 @@ function CompleteSessionDialog({
                             <InputError
                                 message={form.errors.exercises_correct}
                             />
+                        </div>
+
+                        {/* Páginas lidas ao lado das questões: as duas
+                            medem o mesmo avanço por ângulos diferentes —
+                            uma diz o quanto rendeu, a outra o quanto
+                            andou. */}
+                        <div className="flex flex-col gap-2">
+                            <Label htmlFor="pages_read">Páginas lidas</Label>
+                            <Input
+                                id="pages_read"
+                                type="number"
+                                min={0}
+                                value={form.data.pages_read}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'pages_read',
+                                        event.target.value,
+                                    )
+                                }
+                            />
+                            <InputError message={form.errors.pages_read} />
                         </div>
                     </div>
 

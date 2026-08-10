@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Actions\Study\ResolveCurrentFocusSession;
 use App\Concerns\CalculatesPercentage;
 use App\Concerns\ListsStudyPlans;
+use App\Concerns\SummarizesCycleAdherence;
 use App\Concerns\SummarizesStudyTime;
 use App\Concerns\SummarizesTrackPace;
 use App\Models\Enums\FocusSessionState;
@@ -21,6 +22,7 @@ class DashboardController extends Controller
 {
     use CalculatesPercentage;
     use ListsStudyPlans;
+    use SummarizesCycleAdherence;
     use SummarizesStudyTime;
     use SummarizesTrackPace;
 
@@ -91,6 +93,7 @@ class DashboardController extends Controller
             'recentDays' => $this->recentDays($user, $excludeBreaks),
             'evolution' => $plan instanceof StudyPlan ? $this->evolution($plan) : null,
             'pace' => $plan instanceof StudyPlan ? $this->trackPace($plan) : null,
+            'cycle' => $plan instanceof StudyPlan ? $this->cycleAdherence($plan) : null,
         ]);
     }
 
@@ -102,7 +105,7 @@ class DashboardController extends Controller
      * mostra o avanço das tarefas, mas o acerto em questões — a medida de
      * onde o estudo está falhando — não aparece em nenhuma outra tela.
      *
-     * @return array{rows: array<int, array{id: int, name: string, tasksDone: int, tasksTotal: int, progress: int, exercises: int, correct: int, accuracy: int|null}>, totals: array{tasksDone: int, tasksTotal: int, progress: int, exercises: int, correct: int, accuracy: int|null}}
+     * @return array{rows: array<int, array{id: int, name: string, tasksDone: int, tasksTotal: int, progress: int, exercises: int, correct: int, accuracy: int|null, pages: int}>, totals: array{tasksDone: int, tasksTotal: int, progress: int, exercises: int, correct: int, accuracy: int|null, pages: int}}
      */
     private function evolution(StudyPlan $plan): array
     {
@@ -121,6 +124,7 @@ class DashboardController extends Controller
                 'exercises' => $exercises,
                 'correct' => $correct,
                 'accuracy' => $this->percent($correct, $exercises),
+                'pages' => (int) $subject->topics->sum('pages_read'),
             ];
         });
 
@@ -138,6 +142,7 @@ class DashboardController extends Controller
                 'exercises' => $exercises,
                 'correct' => $correct,
                 'accuracy' => $this->percent($correct, $exercises),
+                'pages' => (int) $rows->sum('pages'),
             ],
         ];
     }

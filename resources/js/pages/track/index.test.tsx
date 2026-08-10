@@ -71,6 +71,7 @@ function task(overrides: Partial<TrackTask> = {}): TrackTask {
         reviewStatus: null,
         exercisesTotal: 0,
         exercisesCorrect: 0,
+        pagesRead: 0,
         accuracy: null,
         ...overrides,
     };
@@ -84,6 +85,7 @@ function cycle(overrides: Partial<TrackCycle> = {}): TrackCycle {
         exercises: 0,
         correct: 0,
         accuracy: null,
+        pages: 0,
         tasks: [task()],
         ...overrides,
     };

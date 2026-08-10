@@ -14,6 +14,7 @@ describe('SessionsTable', () => {
                         type: 'Exercícios',
                         exercises: 20,
                         accuracy: 80,
+                        pages: 12,
                     },
                 ]}
             />,
@@ -23,9 +24,10 @@ describe('SessionsTable', () => {
         expect(screen.getByText('50min')).toBeInTheDocument();
         expect(screen.getByText('20')).toBeInTheDocument();
         expect(screen.getByText('80%')).toBeInTheDocument();
+        expect(screen.getByText('12')).toBeInTheDocument();
     });
 
-    it('renders a placeholder for sessions without exercises or accuracy', () => {
+    it('renders a placeholder for sessions without exercises, accuracy or pages', () => {
         render(
             <SessionsTable
                 rows={[
@@ -36,13 +38,14 @@ describe('SessionsTable', () => {
                         type: 'Leitura',
                         exercises: null,
                         accuracy: null,
+                        pages: null,
                     },
                 ]}
             />,
         );
 
         const dashes = screen.getAllByText('—');
-        expect(dashes).toHaveLength(2);
+        expect(dashes).toHaveLength(3);
     });
 
     it('renders nothing in the body when there are no rows', () => {
