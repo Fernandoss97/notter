@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Actions\Study\AddCycleSlot;
 use App\Actions\Study\Exceptions\InvalidCycleTransitionException;
 use App\Actions\Study\ReorderCycleSlots;
+use App\Actions\Study\SuggestCycleOrder;
 use App\Actions\Study\TrimCycle;
 use App\Http\Requests\Study\ReorderCycleSlotsRequest;
 use App\Http\Requests\Study\StoreCycleSlotRequest;
@@ -88,6 +89,26 @@ class CycleSlotController extends Controller
             $action->handle($plan, $request->integer('keep'));
 
             Inertia::flash('toast', ['type' => 'success', 'message' => __('Ciclo enxugado.')]);
+        }
+
+        return back();
+    }
+
+    /**
+     * Reordena o rodízio intercalando as famílias de disciplina (§3), para
+     * não deixar dois direitos ou duas de exatas em sequência.
+     *
+     * Sobrescreve a ordem que estava lá: é um botão que o usuário aperta
+     * quando quer a sugestão, e ele pode reordenar por cima depois.
+     */
+    public function interleave(Request $request, SuggestCycleOrder $action): RedirectResponse
+    {
+        $plan = $request->user()->activeStudyPlan;
+
+        if ($plan instanceof StudyPlan) {
+            $action->handle($plan);
+
+            Inertia::flash('toast', ['type' => 'success', 'message' => __('Ordem intercalada.')]);
         }
 
         return back();

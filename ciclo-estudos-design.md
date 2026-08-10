@@ -272,9 +272,10 @@ colado no foco porque é o que responde "o que agora".
 | Lacuna | Decisão |
 |---|---|
 | §2 diz `<20h → 4` e `>25h → 5-6`; **20–25h não é especificado**, e o default `weekly_goal_minutes` é 1200 = exatamente 20h, em cima da fronteira | `<20h → 4`; `20–25h → 5`; `>25h → 5`; `>=30h → 6`. Sempre sugestão editável, nunca limite |
-| §2 "disciplinas basilares" por concurso | É conteúdo curado, não código. Adiado: sem catálogo, a montagem é manual ou importada, como já se faz na trilha |
+| §2 "disciplinas basilares" por concurso | É conteúdo curado, não código. **Adiado e não implementado**: sem catálogo, a montagem é manual ou importada, como já se faz na trilha. É o único item da spec que ficou de fora |
 | §5 "restrição a resumos", §6 "feito é melhor que perfeito" | São microcopy, não dados. Viram texto no estado vazio do ciclo e no encerramento de bloco abaixo do alvo. Implementar como regra seria over-building |
-| §3 intercalação | Heurística na geração + aviso suave, nunca restrição rígida. Há motivo legítimo para dois direitos seguidos |
+| §3 intercalação | Heurística na geração + aviso suave, nunca restrição rígida. Há motivo legítimo para dois direitos seguidos. O algoritmo é guloso e não garante zero repetição — com quatro direitos e um português, alguma dupla fica junta; quando não há alternativa a repetição entra, porque uma sugestão que falha é pior que uma imperfeita |
+| Área "Outra" | Não é uma família, é a ausência de resposta. Duas disciplinas sem etiqueta em sequência não geram aviso: avisar sobre o que não se sabe treina o usuário a ignorar avisos |
 | Exceção de 120 min (§2) | `block_minutes` valida 60–120; acima de 90 mostra aviso inline, não erro |
 | Um ciclo por plano ou vários? | **Um por plano.** O plano já tem semântica de "ativo"; vários exigiriam um modelo pai `StudyCycle` sem ganho no MVP |
 | A disciplina pode aparecer duas vezes na mesma volta? | **Não.** O peso vem de `block_minutes`, não de repetição — daí o `unique(study_plan_id, subject_id)` |
@@ -289,7 +290,7 @@ colado no foco porque é o que responde "o que agora".
 | **F1** ✅ | `cycle_slots` + `cycle_blocks` + tela `/ciclo` com ordem manual + integração no foco | §1, §3, §6 — o módulo já é útil aqui |
 | **F2** ✅ | `subjects.mode`, `boost_until`, pausar slot, modo enxuto | §4 |
 | **F3** ✅ | `pages_read` nas três camadas + aderência no dashboard | §5 |
-| **F4** | `subjects.area`, assistente de montagem, aviso de intercalação | §2, §3 |
+| **F4** ✅ | `subjects.area`, assistente de montagem, aviso de intercalação | §2, §3 |
 
 Testes por fase, conforme o `CLAUDE.md`: Unit para as Actions, Feature
 para rotas e props Inertia, Vitest para a tela de ciclo e o

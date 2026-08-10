@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Enums\SubjectArea;
 use App\Models\Enums\SubjectMode;
 use Database\Factories\SubjectFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -17,12 +18,13 @@ use Illuminate\Support\Carbon;
  * @property int $study_plan_id
  * @property string $name
  * @property SubjectMode $mode
+ * @property SubjectArea $area
  * @property int|null $goal_minutes
  * @property int $position
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'mode', 'goal_minutes', 'position'])]
+#[Fillable(['name', 'mode', 'area', 'goal_minutes', 'position'])]
 class Subject extends Model
 {
     /** @use HasFactory<SubjectFactory> */
@@ -37,6 +39,7 @@ class Subject extends Model
 
     protected $attributes = [
         'mode' => 'reading',
+        'area' => 'other',
         'position' => 0,
     ];
 
@@ -47,6 +50,7 @@ class Subject extends Model
     {
         return [
             'mode' => SubjectMode::class,
+            'area' => SubjectArea::class,
             'goal_minutes' => 'integer',
             'position' => 'integer',
         ];

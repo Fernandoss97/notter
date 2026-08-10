@@ -55,6 +55,7 @@ function slot(overrides: Partial<CycleSlotSummary> = {}): CycleSlotSummary {
         subjectId: 10,
         subjectName: 'Direito Constitucional',
         subjectMode: 'reading',
+        subjectArea: 'law',
         blockMinutes: 60,
         boosted: false,
         state: 'active',
@@ -86,6 +87,7 @@ const cycle: StudyCycle = {
     currentBlockId: 100,
     readingCount: 2,
     recommendedReading: 6,
+    recommendedCore: 4,
     slots: [
         slot({
             id: 1,
@@ -320,6 +322,73 @@ describe('cycle screen', () => {
             { keep: 2 },
             expect.anything(),
         );
+    });
+
+    it('points out two subjects of the same family in a row', () => {
+        renderCycle({
+            slots: [
+                slot({ id: 1, subjectName: 'Constitucional', subjectArea: 'law' }),
+                slot({ id: 2, subjectName: 'Administrativo', subjectArea: 'law' }),
+            ],
+        });
+
+        const hint = screen.getByText(/Constitucional e Administrativo/);
+        expect(hint).toHaveAttribute('data-visible', 'true');
+        expect(hint).toHaveTextContent('são da mesma área');
+    });
+
+    it('stays quiet when the families alternate', () => {
+        renderCycle({
+            slots: [
+                slot({ id: 1, subjectArea: 'law' }),
+                slot({ id: 2, subjectArea: 'languages' }),
+            ],
+        });
+
+        expect(
+            screen.getByText(/estão em sequência/),
+        ).toHaveAttribute('data-visible', 'false');
+    });
+
+    it('suggests the core size only while the cycle is below it', () => {
+        renderCycle({ recommendedCore: 5 });
+
+        expect(screen.getByText(/o método sugere começar com 5/)).toHaveAttribute(
+            'data-visible',
+            'true',
+        );
+    });
+
+    it('does not push the core suggestion on a cycle that already has enough', () => {
+        renderCycle({ recommendedCore: 2 });
+
+        expect(screen.getByText(/o método sugere começar com 2/)).toHaveAttribute(
+            'data-visible',
+            'false',
+        );
+    });
+
+    it('reorders the rotation by family on request', async () => {
+        const user = userEvent.setup();
+        renderCycle({
+            slots: [slot({ id: 1 }), slot({ id: 2 }), slot({ id: 3 })],
+        });
+
+        await user.click(screen.getByText('Intercalar áreas'));
+
+        expect(post).toHaveBeenCalledWith(
+            expect.stringContaining('/ciclo/intercalar'),
+            {},
+            expect.anything(),
+        );
+    });
+
+    it('hides the interleave button while there is nothing to interleave', () => {
+        renderCycle({ slots: [slot({ id: 1 }), slot({ id: 2 })] });
+
+        expect(
+            screen.getByText('Intercalar áreas').closest('span'),
+        ).toHaveAttribute('aria-hidden', 'true');
     });
 
     it('falls back to an invitation when there is no plan', () => {

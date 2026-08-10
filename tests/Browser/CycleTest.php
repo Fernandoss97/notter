@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\CycleSlot;
+use App\Models\Enums\SubjectArea;
 use App\Models\StudyPlan;
 use App\Models\Subject;
 use App\Models\User;
@@ -123,6 +124,47 @@ test('finishing the theory of a subject frees room in the rotation', function ()
         ->click('[role="option"]:has-text("Encerrada")')
         ->assertSee('Fora do rodízio')
         ->assertSee('Português')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the rotation warns about neighbouring families and reorders on request', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create(['name' => 'Concurso XYZ']);
+
+    $subjects = [
+        'Constitucional' => SubjectArea::Law,
+        'Administrativo' => SubjectArea::Law,
+        'Português' => SubjectArea::Languages,
+    ];
+
+    $position = 0;
+
+    foreach ($subjects as $name => $area) {
+        CycleSlot::factory()->create([
+            'study_plan_id' => $plan->id,
+            'subject_id' => Subject::factory()->for($plan)->create([
+                'name' => $name,
+                'area' => $area,
+            ])->id,
+            'position' => $position++,
+        ]);
+    }
+
+    $page = visit('/login')
+        ->fill('email', $user->email)
+        ->fill('password', 'password')
+        ->click('Log in')
+        ->assertNoJavaScriptErrors();
+
+    $page->navigate('/ciclo')
+        ->assertSee('Constitucional e Administrativo')
+        ->assertNoJavaScriptErrors();
+
+    // O aviso some porque a ordem deixou de ter o problema, não porque
+    // alguém o dispensou.
+    $page->click('button:has-text("Intercalar áreas")')
+        ->assertSee('Ordem intercalada')
+        ->assertDontSee('Constitucional e Administrativo')
         ->assertNoJavaScriptErrors();
 });
 

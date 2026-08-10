@@ -26,13 +26,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { findAreaClashes } from '@/lib/cycle-interleaving';
 import { formatDurationMinutes } from '@/lib/format-duration';
-import { SUBJECT_MODE_LABEL } from '@/lib/study-labels';
+import { SUBJECT_AREA_LABEL, SUBJECT_MODE_LABEL } from '@/lib/study-labels';
 import { cn } from '@/lib/utils';
 import { index } from '@/routes/cycle';
 import { complete as completeBlock } from '@/routes/cycle-blocks';
 import {
     destroy as destroySlot,
+    interleave as interleaveSlots,
     reorder as reorderSlots,
     store as storeSlot,
     trim as trimCycle,
@@ -40,13 +42,8 @@ import {
 } from '@/routes/cycle-slots';
 import { show as showFocus } from '@/routes/focus';
 import { index as planIndex } from '@/routes/plans';
-import { mode as updateSubjectMode } from '@/routes/subjects';
-import type {
-    CycleSlotSummary,
-    PlanSummary,
-    StudyCycle,
-    SubjectMode,
-} from '@/types/study';
+import { update as updateSubject } from '@/routes/subjects';
+import type { CycleSlotSummary, PlanSummary, StudyCycle } from '@/types/study';
 
 /** Acima disto a tela avisa, mas não impede — ver CycleSlot::MAX. */
 const RECOMMENDED_MAX_BLOCK_MINUTES = 90;
@@ -84,6 +81,7 @@ export default function CycleIndex({
         busy && 'opacity-50',
     );
     const crowded = cycle.readingCount > cycle.recommendedReading;
+    const clashes = findAreaClashes(cycle.slots);
 
     return (
         <>
@@ -99,6 +97,9 @@ export default function CycleIndex({
                         }
                         actions={
                             <>
+                                <InterleaveButton
+                                    visible={active.length > 2}
+                                />
                                 <TrimDialog activeCount={active.length} />
                                 <Button variant="outline" asChild>
                                     <Link href={showFocus()}>
@@ -114,6 +115,14 @@ export default function CycleIndex({
                     visible={crowded}
                     reading={cycle.readingCount}
                     recommended={cycle.recommendedReading}
+                />
+
+                <ClashHint clashes={clashes} />
+
+                <CoreHint
+                    visible={active.length > 0 && active.length < cycle.recommendedCore}
+                    active={active.length}
+                    recommended={cycle.recommendedCore}
                 />
 
                 <PlanSwitcher
@@ -196,6 +205,91 @@ function CrowdedHint({
             até {recommended}. Passe para revisão as que já tiveram a teoria
             vista, ou enxugue o ciclo para nivelar antes de seguir.
         </p>
+    );
+}
+
+/**
+ * Duas matérias da mesma família em sequência. Aviso, nunca impedimento:
+ * há motivo legítimo para dois direitos seguidos, e uma restrição rígida
+ * aqui só faria o usuário brigar com a tela.
+ */
+function ClashHint({ clashes }: { clashes: string[] }) {
+    const visible = clashes.length > 0;
+
+    return (
+        <p
+            data-slot="cycle-clash"
+            data-visible={visible}
+            aria-hidden={!visible}
+            inert={!visible || undefined}
+            hidden={!visible}
+            className={cn('text-sm text-fg-2', !visible && 'hidden')}
+        >
+            {clashes.join('; ')}{' '}
+            {clashes.length === 1 ? 'são da mesma área' : 'são das mesmas áreas'}{' '}
+            e estão em sequência. Alternar áreas diferentes descansa a
+            concentração — "Intercalar áreas" reorganiza a fila.
+        </p>
+    );
+}
+
+/**
+ * O núcleo básico sugerido pela carga horária (§2). Só aparece quando o
+ * ciclo está abaixo dele: quem já tem matérias demais recebe o outro aviso,
+ * e dois conselhos contrários na mesma tela não ajudam ninguém.
+ */
+function CoreHint({
+    visible,
+    active,
+    recommended,
+}: {
+    visible: boolean;
+    active: number;
+    recommended: number;
+}) {
+    return (
+        <p
+            data-slot="cycle-core"
+            data-visible={visible}
+            aria-hidden={!visible}
+            inert={!visible || undefined}
+            hidden={!visible}
+            className={cn('text-sm text-fg-2', !visible && 'hidden')}
+        >
+            Para a sua carga horária, o método sugere começar com{' '}
+            {recommended} disciplinas — você tem {active}. É sugestão, não
+            regra: o ciclo funciona com o que couber na sua semana.
+        </p>
+    );
+}
+
+/**
+ * Reorganiza a fila alternando as famílias. Fica escondido enquanto o
+ * rodízio é pequeno demais para haver o que intercalar, em vez de sumir:
+ * assim montar o ciclo não faz os botões do cabeçalho dançarem.
+ */
+function InterleaveButton({ visible }: { visible: boolean }) {
+    return (
+        <span
+            data-slot="cycle-interleave"
+            aria-hidden={!visible}
+            inert={!visible || undefined}
+            hidden={!visible}
+            className={cn(!visible && 'hidden')}
+        >
+            <Button
+                variant="outline"
+                onClick={() =>
+                    router.post(
+                        interleaveSlots().url,
+                        {},
+                        { preserveScroll: true },
+                    )
+                }
+            >
+                Intercalar áreas
+            </Button>
+        </span>
     );
 }
 
@@ -292,6 +386,10 @@ function EmptyCycle({ visible }: { visible: boolean }) {
  * Uma cadeira do rodízio. A ordem se muda por botões, não por arrastar:
  * teclado e leitor de tela vêm antes, e o ganho de um drag numa lista de
  * meia dúzia de itens não paga a dependência.
+ *
+ * A linha quebra em vez de espremer. Com a área, a situação e cinco ações
+ * lado a lado, a coluna do nome era achatada a zero e a disciplina — a
+ * única informação que importa aqui — sumia da tela.
  */
 function SlotRow({
     slot,
@@ -327,7 +425,7 @@ function SlotRow({
             data-slot="cycle-slot"
             data-current={slot.isCurrent || undefined}
             className={cn(
-                'flex items-center gap-3 rounded-sm px-2 py-2 transition-colors duration-fast ease-out hover:bg-muted',
+                'flex flex-wrap items-center gap-x-3 gap-y-2 rounded-sm px-2 py-2 transition-colors duration-fast ease-out hover:bg-muted',
                 slot.isCurrent && 'bg-muted',
                 paused && 'opacity-60',
             )}
@@ -353,7 +451,7 @@ function SlotRow({
                 {position + 1}
             </span>
 
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <div className="flex min-w-[12rem] flex-1 flex-col gap-1">
                 <div className="flex items-center gap-2">
                     <span className="truncate text-sm text-foreground">
                         {slot.subjectName}
@@ -369,7 +467,7 @@ function SlotRow({
             </div>
 
             {block && (
-                <div className="w-32 shrink-0">
+                <div className="w-28 shrink-0">
                     <ProgressBar
                         value={block.progressPercent}
                         color={block.completed ? 'success' : 'focus'}
@@ -377,8 +475,23 @@ function SlotRow({
                 </div>
             )}
 
-            <div className="flex shrink-0 items-center gap-1">
-                <ModeSelect slot={slot} />
+            <div className="ml-auto flex shrink-0 items-center gap-1">
+                <SubjectFieldSelect
+                    slot={slot}
+                    field="area"
+                    value={slot.subjectArea}
+                    labels={SUBJECT_AREA_LABEL}
+                    label={`Área de ${slot.subjectName}`}
+                    width="w-32"
+                />
+                <SubjectFieldSelect
+                    slot={slot}
+                    field="mode"
+                    value={slot.subjectMode}
+                    labels={SUBJECT_MODE_LABEL}
+                    label={`Situação de ${slot.subjectName}`}
+                    width="w-28"
+                />
                 {slot.isCurrent && (
                     <Button variant="ghost" size="sm" asChild>
                         <Link href={showFocus()}>Estudar</Link>
@@ -437,20 +550,35 @@ function ReorderButton({
 }
 
 /**
- * O pé em que a disciplina está. Mudar para revisão encolhe o bloco dela
- * no rodízio, e encerrar a tira de cena — o servidor cuida disso, para não
- * virar uma segunda edição que o usuário teria de lembrar de fazer.
+ * Um campo da disciplina editado direto da linha do rodízio.
+ *
+ * Otimista com estado local: a resposta troca a tela inteira, e sem o eco
+ * o seletor voltaria ao valor antigo por um frame.
  */
-function ModeSelect({ slot }: { slot: CycleSlotSummary }) {
-    const [pending, setPending] = useState<SubjectMode | null>(null);
-    const mode = pending ?? slot.subjectMode;
+function SubjectFieldSelect<T extends string>({
+    slot,
+    field,
+    value,
+    labels,
+    label,
+    width,
+}: {
+    slot: CycleSlotSummary;
+    field: 'mode' | 'area';
+    value: T;
+    labels: Record<T, string>;
+    label: string;
+    width: string;
+}) {
+    const [pending, setPending] = useState<T | null>(null);
+    const current = pending ?? value;
 
     function change(next: string) {
-        setPending(next as SubjectMode);
+        setPending(next as T);
 
         router.put(
-            updateSubjectMode(slot.subjectId).url,
-            { mode: next },
+            updateSubject(slot.subjectId).url,
+            { [field]: next },
             {
                 preserveScroll: true,
                 showProgress: false,
@@ -460,25 +588,18 @@ function ModeSelect({ slot }: { slot: CycleSlotSummary }) {
     }
 
     return (
-        <Select value={mode} onValueChange={change}>
-            <SelectTrigger
-                size="sm"
-                aria-label={`Situação de ${slot.subjectName}`}
-                className="w-28"
-            >
+        <Select value={current} onValueChange={change}>
+            <SelectTrigger size="sm" aria-label={label} className={width}>
                 <SelectValue />
             </SelectTrigger>
             <SelectContent>
-                {(
-                    Object.entries(SUBJECT_MODE_LABEL) as [
-                        SubjectMode,
-                        string,
-                    ][]
-                ).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                        {label}
-                    </SelectItem>
-                ))}
+                {(Object.entries(labels) as [T, string][]).map(
+                    ([option, optionLabel]) => (
+                        <SelectItem key={option} value={option}>
+                            {optionLabel}
+                        </SelectItem>
+                    ),
+                )}
             </SelectContent>
         </Select>
     );

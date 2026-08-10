@@ -271,11 +271,25 @@ export type CycleBlockSummary = {
  */
 export type SubjectMode = 'reading' | 'review' | 'done';
 
+/**
+ * A família da disciplina. Existe só para a intercalação: sem ela o
+ * sistema não tem como saber que dois direitos cansam a mesma parte da
+ * cabeça. É grosseira de propósito — taxonomia fina exigiria catálogo
+ * curado por concurso, que é conteúdo e não código.
+ */
+export type SubjectArea =
+    | 'law'
+    | 'exact'
+    | 'languages'
+    | 'humanities'
+    | 'other';
+
 export type CycleSlotSummary = {
     id: number;
     subjectId: number;
     subjectName: string;
     subjectMode: SubjectMode;
+    subjectArea: SubjectArea;
     blockMinutes: number;
     /** Ainda dentro da janela de imersão inicial de uma matéria nova. */
     boosted: boolean;
@@ -292,6 +306,8 @@ export type StudyCycle = {
     /** Matérias em primeiro contato hoje, contra o que se recomenda. */
     readingCount: number;
     recommendedReading: number;
+    /** Tamanho do núcleo básico sugerido pela carga horária do plano. */
+    recommendedCore: number;
 };
 
 export type PomodoroSettingFull = {

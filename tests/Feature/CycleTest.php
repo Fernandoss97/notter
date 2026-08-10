@@ -239,7 +239,7 @@ test('a subject mode can be changed from the cycle screen', function () {
     ]);
 
     $this->actingAs($user)->from(route('cycle.index'))
-        ->put(route('subjects.mode', $subject), ['mode' => 'review'])
+        ->put(route('subjects.update', $subject), ['mode' => 'review'])
         ->assertRedirect(route('cycle.index'));
 
     expect($subject->refresh()->mode)->toBe(SubjectMode::Review)
@@ -251,7 +251,7 @@ test('the mode of another user subject cannot be changed', function () {
     $foreign = Subject::factory()->create();
 
     $this->actingAs($user)
-        ->put(route('subjects.mode', $foreign), ['mode' => 'done'])
+        ->put(route('subjects.update', $foreign), ['mode' => 'done'])
         ->assertForbidden();
 });
 

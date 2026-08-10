@@ -1,4 +1,4 @@
-import type { ActivityType, SubjectMode } from '@/types/study';
+import type { ActivityType, SubjectArea, SubjectMode } from '@/types/study';
 
 export const ACTIVITY_TYPE_LABEL: Record<ActivityType, string> = {
     reading: 'Leitura',
@@ -16,4 +16,12 @@ export const SUBJECT_MODE_LABEL: Record<SubjectMode, string> = {
     reading: 'Leitura',
     review: 'Revisão',
     done: 'Encerrada',
+};
+
+export const SUBJECT_AREA_LABEL: Record<SubjectArea, string> = {
+    law: 'Direito',
+    exact: 'Exatas',
+    languages: 'Linguagens',
+    humanities: 'Humanas',
+    other: 'Outra',
 };

@@ -4,7 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Actions\Study\SetSubjectMode;
 use App\Http\Requests\Study\StoreSubjectRequest;
-use App\Http\Requests\Study\UpdateSubjectModeRequest;
+use App\Http\Requests\Study\UpdateSubjectRequest;
+use App\Models\Enums\SubjectArea;
 use App\Models\Enums\SubjectMode;
 use App\Models\Subject;
 use Illuminate\Http\RedirectResponse;
@@ -36,20 +37,29 @@ class SubjectController extends Controller
     }
 
     /**
-     * Muda o pé em que a disciplina está — leitura, revisão ou encerrada.
+     * Edita o que a disciplina é para o ciclo: o pé em que ela está
+     * (leitura, revisão, encerrada) e a família a que pertence.
      *
-     * A Action mexe na cadeira do rodízio junto, porque é essa a regra: a
-     * matéria que sai da teoria ocupa menos tempo, e é a folga liberada
-     * que abre espaço para uma disciplina nova.
+     * O modo passa por uma Action porque mexe na cadeira do rodízio junto:
+     * a matéria que sai da teoria ocupa menos tempo, e é a folga liberada
+     * que abre espaço para uma disciplina nova. A família é só uma
+     * etiqueta — ela não muda nada sozinha, apenas alimenta a sugestão de
+     * ordem intercalada.
      */
-    public function mode(
-        UpdateSubjectModeRequest $request,
+    public function update(
+        UpdateSubjectRequest $request,
         Subject $subject,
         SetSubjectMode $action,
     ): RedirectResponse {
         abort_unless($subject->studyPlan->user_id === $request->user()->id, 403);
 
-        $action->handle($subject, SubjectMode::from($request->string('mode')->toString()));
+        if ($request->filled('area')) {
+            $subject->update(['area' => SubjectArea::from($request->string('area')->toString())]);
+        }
+
+        if ($request->filled('mode')) {
+            $action->handle($subject, SubjectMode::from($request->string('mode')->toString()));
+        }
 
         return back();
     }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Actions\Study\ResolveCurrentCycleBlock;
 use App\Actions\Study\ResolveCurrentFocusSession;
 use App\Concerns\ListsStudyPlans;
+use App\Concerns\SuggestsCoreSubjects;
 use App\Concerns\SummarizesCycleBlock;
 use App\Models\CycleBlock;
 use App\Models\CycleSlot;
@@ -19,6 +20,7 @@ use Inertia\Response;
 class CycleController extends Controller
 {
     use ListsStudyPlans;
+    use SuggestsCoreSubjects;
     use SummarizesCycleBlock;
 
     public function __construct(
@@ -67,6 +69,9 @@ class CycleController extends Controller
                     ->filter(fn (CycleSlot $slot) => $slot->isActive() && $slot->subject->mode->isFirstContact())
                     ->count(),
                 'recommendedReading' => Subject::RECOMMENDED_READING_SUBJECTS,
+                // O núcleo básico sugerido pela carga horária do plano
+                // (§2). Sugestão, não limite — o app não impede nada.
+                'recommendedCore' => $this->recommendedCoreSubjects($plan),
             ],
             'availableSubjects' => $this->availableSubjects($plan, $slots),
         ]);
@@ -80,7 +85,7 @@ class CycleController extends Controller
      * há vez.
      *
      * @param  Collection<int, CycleSlot>  $slots
-     * @return array<int, array{id: int, subjectId: int, subjectName: string, subjectMode: string, blockMinutes: int, boosted: bool, state: string, isCurrent: bool, block: array<string, mixed>|null}>
+     * @return array<int, array{id: int, subjectId: int, subjectName: string, subjectMode: string, subjectArea: string, blockMinutes: int, boosted: bool, state: string, isCurrent: bool, block: array<string, mixed>|null}>
      */
     private function slotProps(Collection $slots, ?CycleBlock $currentBlock, ?StudySession $session): array
     {
@@ -101,6 +106,7 @@ class CycleController extends Controller
                 'subjectId' => $slot->subject_id,
                 'subjectName' => $slot->subject->name,
                 'subjectMode' => $slot->subject->mode->value,
+                'subjectArea' => $slot->subject->area->value,
                 'blockMinutes' => $slot->block_minutes,
                 'boosted' => $slot->isBoosted(),
                 'state' => $slot->state->value,
