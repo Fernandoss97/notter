@@ -35,6 +35,7 @@ class CycleSlotController extends Controller
                 $subject,
                 $request->filled('block_minutes') ? $request->integer('block_minutes') : null,
                 $request->boolean('boost'),
+                $request->filled('blocks_per_lap') ? $request->integer('blocks_per_lap') : null,
             );
         } catch (InvalidCycleTransitionException $exception) {
             Inertia::flash('toast', ['type' => 'error', 'message' => $exception->getMessage()]);

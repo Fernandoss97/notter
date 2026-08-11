@@ -38,6 +38,7 @@ class AddCycleSlot
         Subject $subject,
         ?int $blockMinutes = null,
         bool $boost = false,
+        ?int $blocksPerLap = null,
     ): CycleSlot {
         if ($subject->study_plan_id !== $plan->id) {
             throw InvalidCycleTransitionException::subjectOutsidePlan();
@@ -51,6 +52,7 @@ class AddCycleSlot
             'subject_id' => $subject->id,
             'position' => (int) $plan->cycleSlots()->max('position') + 1,
             'block_minutes' => $blockMinutes ?? CycleSlot::DEFAULT_BLOCK_MINUTES,
+            'blocks_per_lap' => $blocksPerLap ?? CycleSlot::DEFAULT_BLOCKS_PER_LAP,
             'boost_until' => $boost ? today()->addWeeks(self::BOOST_WEEKS) : null,
         ]);
     }

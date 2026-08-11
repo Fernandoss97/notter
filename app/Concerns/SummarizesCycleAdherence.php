@@ -43,11 +43,15 @@ trait SummarizesCycleAdherence
 
         $minutesBySubject = $this->minutesBySubject($plan);
         $totalMinutes = (int) $minutesBySubject->sum();
-        $totalTarget = (int) $slots->sum('block_minutes');
+        // O que a volta promete a cada matéria são os minutos do bloco
+        // vezes as passagens dela — quem tem peso 2 pediu o dobro do tempo,
+        // e a fatia-alvo precisa dizer isso.
+        $totalTarget = (int) $slots->sum(fn (CycleSlot $slot) => $slot->block_minutes * $slot->blocks_per_lap);
 
         $rows = $slots->map(function (CycleSlot $slot) use ($minutesBySubject, $totalMinutes, $totalTarget) {
             $minutes = (int) $minutesBySubject->get($slot->subject_id, 0);
-            $target = $totalTarget > 0 ? (int) round($slot->block_minutes / $totalTarget * 100) : 0;
+            $promised = $slot->block_minutes * $slot->blocks_per_lap;
+            $target = $totalTarget > 0 ? (int) round($promised / $totalTarget * 100) : 0;
             $actual = $totalMinutes > 0 ? (int) round($minutes / $totalMinutes * 100) : 0;
 
             return [

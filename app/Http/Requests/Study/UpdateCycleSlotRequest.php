@@ -27,6 +27,12 @@ class UpdateCycleSlotRequest extends FormRequest
                 'min:'.CycleSlot::MIN_BLOCK_MINUTES,
                 'max:'.CycleSlot::MAX_BLOCK_MINUTES,
             ],
+            'blocks_per_lap' => [
+                'sometimes',
+                'integer',
+                'min:'.CycleSlot::MIN_BLOCKS_PER_LAP,
+                'max:'.CycleSlot::MAX_BLOCKS_PER_LAP,
+            ],
             'state' => ['sometimes', Rule::enum(CycleSlotState::class)],
         ];
     }

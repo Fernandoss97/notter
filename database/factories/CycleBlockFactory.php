@@ -21,6 +21,7 @@ class CycleBlockFactory extends Factory
         return [
             'cycle_slot_id' => CycleSlot::factory(),
             'lap' => 1,
+            'sequence' => 1,
             'target_seconds' => 60 * 60,
             'accumulated_seconds' => 0,
             'completed_at' => null,

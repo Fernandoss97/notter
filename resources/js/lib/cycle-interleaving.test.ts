@@ -1,24 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import type { CycleSlotSummary, SubjectArea } from '@/types/study';
+import type { CycleLapPassage, SubjectArea } from '@/types/study';
 import { findAreaClashes } from './cycle-interleaving';
 
-function slot(
+let nextSlotId = 1;
+
+function passage(
     name: string,
     area: SubjectArea,
-    state: CycleSlotSummary['state'] = 'active',
-): CycleSlotSummary {
+    overrides: Partial<CycleLapPassage> = {},
+): CycleLapPassage {
     return {
-        id: name.length,
-        subjectId: name.length,
+        slotId: nextSlotId++,
+        sequence: 1,
         subjectName: name,
-        subjectMode: 'reading',
         subjectArea: area,
-        blockMinutes: 60,
-        effectiveBlockMinutes: 60,
-        boosted: false,
-        state,
-        isCurrent: false,
-        block: null,
+        ...overrides,
     };
 }
 
@@ -26,8 +22,8 @@ describe('findAreaClashes', () => {
     it('finds two subjects of the same family in a row', () => {
         expect(
             findAreaClashes([
-                slot('Constitucional', 'law'),
-                slot('Administrativo', 'law'),
+                passage('Constitucional', 'law'),
+                passage('Administrativo', 'law'),
             ]),
         ).toEqual(['Constitucional e Administrativo']);
     });
@@ -35,9 +31,9 @@ describe('findAreaClashes', () => {
     it('says nothing when the families alternate', () => {
         expect(
             findAreaClashes([
-                slot('Constitucional', 'law'),
-                slot('Português', 'languages'),
-                slot('Administrativo', 'law'),
+                passage('Constitucional', 'law'),
+                passage('Português', 'languages'),
+                passage('Administrativo', 'law'),
             ]),
         ).toEqual([]);
     });
@@ -45,9 +41,9 @@ describe('findAreaClashes', () => {
     it('reports every pair in a run of three', () => {
         expect(
             findAreaClashes([
-                slot('Constitucional', 'law'),
-                slot('Administrativo', 'law'),
-                slot('Penal', 'law'),
+                passage('Constitucional', 'law'),
+                passage('Administrativo', 'law'),
+                passage('Penal', 'law'),
             ]),
         ).toEqual([
             'Constitucional e Administrativo',
@@ -57,21 +53,36 @@ describe('findAreaClashes', () => {
 
     it('never warns about unlabelled subjects', () => {
         expect(
-            findAreaClashes([slot('Uma', 'other'), slot('Outra', 'other')]),
+            findAreaClashes([
+                passage('Uma', 'other'),
+                passage('Outra', 'other'),
+            ]),
         ).toEqual([]);
     });
 
-    it('looks past seats that are out of the rotation', () => {
-        expect(
-            findAreaClashes([
-                slot('Constitucional', 'law'),
-                slot('Português', 'languages', 'paused'),
-                slot('Administrativo', 'law'),
-            ]),
-        ).toEqual(['Constitucional e Administrativo']);
+    it('has nothing to say about a rotation of one', () => {
+        expect(findAreaClashes([passage('Constitucional', 'law')])).toEqual([]);
     });
 
-    it('has nothing to say about a rotation of one', () => {
-        expect(findAreaClashes([slot('Constitucional', 'law')])).toEqual([]);
+    // O peso fazendo o que foi pedido não é conselho: "Direito e Direito
+    // são da mesma área" seria a tela falando sozinha.
+    it('does not warn about a subject sitting next to itself', () => {
+        expect(
+            findAreaClashes([
+                { ...passage('Direito', 'law'), slotId: 7, sequence: 1 },
+                { ...passage('Direito', 'law'), slotId: 7, sequence: 2 },
+            ]),
+        ).toEqual([]);
+    });
+
+    it('still warns about the neighbour a repeated passage brought close', () => {
+        expect(
+            findAreaClashes([
+                { ...passage('Direito', 'law'), slotId: 7, sequence: 1 },
+                passage('Português', 'languages'),
+                { ...passage('Direito', 'law'), slotId: 7, sequence: 2 },
+                passage('Administrativo', 'law'),
+            ]),
+        ).toEqual(['Direito e Administrativo']);
     });
 });

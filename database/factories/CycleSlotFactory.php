@@ -25,6 +25,7 @@ class CycleSlotFactory extends Factory
             'subject_id' => Subject::factory(),
             'position' => 0,
             'block_minutes' => 60,
+            'blocks_per_lap' => 1,
             'state' => CycleSlotState::Active,
         ];
     }

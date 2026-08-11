@@ -58,6 +58,9 @@ function slot(overrides: Partial<CycleSlotSummary> = {}): CycleSlotSummary {
         subjectArea: 'law',
         blockMinutes: 60,
         effectiveBlockMinutes: 60,
+        blocksPerLap: 1,
+        blocksDoneInLap: 0,
+        currentPassage: 1,
         boosted: false,
         state: 'active',
         isCurrent: false,
@@ -65,6 +68,27 @@ function slot(overrides: Partial<CycleSlotSummary> = {}): CycleSlotSummary {
     };
 
     return { ...base, ...overrides };
+}
+
+/**
+ * A fila da volta que o servidor mandaria para estas cadeiras: rodada 1
+ * chama todas, rodada 2 só as que têm peso, e assim por diante. Espelha
+ * `ResolveLapOrder` — a tela não a calcula, só a consome.
+ */
+function lapOrderFor(slots: CycleSlotSummary[]): StudyCycle['lapOrder'] {
+    const active = slots.filter((item) => item.state === 'active');
+    const rounds = Math.max(1, ...active.map((item) => item.blocksPerLap));
+
+    return Array.from({ length: rounds }, (_, round) =>
+        active
+            .filter((item) => item.blocksPerLap > round)
+            .map((item) => ({
+                slotId: item.id,
+                sequence: round + 1,
+                subjectName: item.subjectName,
+                subjectArea: item.subjectArea,
+            })),
+    ).flat();
 }
 
 function block(
@@ -85,34 +109,44 @@ function block(
     };
 }
 
+const slots = [
+    slot({
+        id: 1,
+        isCurrent: true,
+        block: block({ elapsedSeconds: 30 * 60, progressPercent: 50 }),
+    }),
+    slot({
+        id: 2,
+        subjectId: 11,
+        subjectName: 'Português',
+        blockMinutes: 90,
+        block: block({ id: 101, subjectId: 11, targetMinutes: 90 }),
+    }),
+];
+
 const cycle: StudyCycle = {
     lap: 2,
     currentBlockId: 100,
     readingCount: 2,
     recommendedReading: 6,
     recommendedCore: 4,
-    slots: [
-        slot({
-            id: 1,
-            isCurrent: true,
-            block: block({ elapsedSeconds: 30 * 60, progressPercent: 50 }),
-        }),
-        slot({
-            id: 2,
-            subjectId: 11,
-            subjectName: 'Português',
-            blockMinutes: 90,
-            block: block({ id: 101, subjectId: 11, targetMinutes: 90 }),
-        }),
-    ],
+    slots,
+    lapOrder: lapOrderFor(slots),
 };
 
 function renderCycle(overrides: Partial<StudyCycle> = {}) {
+    const merged = { ...cycle, ...overrides };
+
     return render(
         <CycleIndex
             plans={[{ id: 1, name: 'Concurso XYZ' }]}
             plan={plan}
-            cycle={{ ...cycle, ...overrides }}
+            cycle={{
+                ...merged,
+                // A fila acompanha as cadeiras do caso, a menos que o
+                // próprio teste diga qual ela é.
+                lapOrder: overrides.lapOrder ?? lapOrderFor(merged.slots),
+            }}
             availableSubjects={[{ id: 12, name: 'Informática' }]}
         />,
     );
@@ -134,6 +168,50 @@ describe('cycle screen', () => {
         renderCycle();
 
         expect(screen.getByText('É a vez')).toBeInTheDocument();
+    });
+
+    // O peso conta blocos, não disciplinas: uma matéria que passa duas
+    // vezes responde por dois blocos da volta.
+    it('counts the passages of the lap, not the subjects in it', () => {
+        renderCycle({
+            slots: [
+                slot({ id: 1, blocksPerLap: 2, blocksDoneInLap: 1 }),
+                slot({ id: 2, subjectId: 11, subjectName: 'Português' }),
+            ],
+        });
+
+        expect(screen.getByText(/1 de 3 blocos/)).toBeInTheDocument();
+    });
+
+    it('says which passage of the subject is running', () => {
+        renderCycle({
+            slots: [
+                slot({
+                    id: 1,
+                    blocksPerLap: 3,
+                    currentPassage: 2,
+                    block: block(),
+                }),
+            ],
+        });
+
+        expect(screen.getByText(/passagem 2 de 3/)).toBeInTheDocument();
+    });
+
+    it('keeps the passage counter out of a cycle with no weight', () => {
+        renderCycle();
+
+        expect(screen.queryByText(/passagem/)).not.toBeInTheDocument();
+    });
+
+    it('shows the weight next to the duration it multiplies', () => {
+        renderCycle({
+            slots: [slot({ id: 1, blockMinutes: 60, blocksPerLap: 2 })],
+        });
+
+        expect(
+            screen.getByLabelText('Ajustar o bloco de Direito Constitucional'),
+        ).toHaveTextContent('60min ×2');
     });
 
     it('shows how far the current block has gone', () => {
@@ -252,6 +330,36 @@ describe('cycle screen', () => {
             'aria-hidden',
             'true',
         );
+    });
+
+    // O peso espalha; quem quer a sentada dobrada muda os minutos. É a
+    // única coisa que o campo precisa dizer, e ele diz na hora.
+    it('explains what asking for more passages does', async () => {
+        const user = userEvent.setup();
+        renderCycle();
+
+        const hint = screen.getByText(/na mesma volta, com as outras no meio/);
+        expect(hint).toHaveAttribute('aria-hidden', 'true');
+
+        const input = screen.getByLabelText('Passagens por volta');
+        await user.clear(input);
+        await user.type(input, '2');
+
+        expect(
+            screen.getByText(/na mesma volta, com as outras no meio/),
+        ).toHaveAttribute('aria-hidden', 'false');
+    });
+
+    it('sends the weight along when a subject enters the rotation', async () => {
+        const user = userEvent.setup();
+        renderCycle();
+
+        const input = screen.getByLabelText('Passagens por volta');
+        await user.clear(input);
+        await user.type(input, '3');
+        await user.click(screen.getByRole('button', { name: 'Adicionar' }));
+
+        expect(formPost).toHaveBeenCalled();
     });
 
     it('shows the empty state only while the rotation has no seats', () => {

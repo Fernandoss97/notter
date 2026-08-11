@@ -21,12 +21,13 @@ use Illuminate\Support\Carbon;
  * @property int $subject_id
  * @property int $position
  * @property int $block_minutes
+ * @property int $blocks_per_lap
  * @property Carbon|null $boost_until
  * @property CycleSlotState $state
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['subject_id', 'position', 'block_minutes', 'boost_until', 'state'])]
+#[Fillable(['subject_id', 'position', 'block_minutes', 'blocks_per_lap', 'boost_until', 'state'])]
 class CycleSlot extends Model
 {
     /** @use HasFactory<CycleSlotFactory> */
@@ -61,6 +62,20 @@ class CycleSlot extends Model
     public const DEFAULT_BLOCK_MINUTES = self::RECOMMENDED_MIN_BLOCK_MINUTES;
 
     /**
+     * Quantas passagens a disciplina tem por volta.
+     *
+     * É o peso do rodízio: duas passagens de 60 minutos valem o mesmo tempo
+     * que uma de 120, mas com outras matérias no meio — e é o intervalo
+     * entre elas, não o total, que o ciclo existe para dar. O teto de 5 é
+     * sanidade: acima disso a volta é uma matéria só com enfeites.
+     */
+    public const MIN_BLOCKS_PER_LAP = 1;
+
+    public const MAX_BLOCKS_PER_LAP = 5;
+
+    public const DEFAULT_BLOCKS_PER_LAP = 1;
+
+    /**
      * Quanto a imersão inicial acrescenta ao bloco enquanto vale (§4).
      *
      * O reforço é *somado* na hora de abrir a volta, e não gravado em
@@ -75,6 +90,7 @@ class CycleSlot extends Model
     protected $attributes = [
         'position' => 0,
         'block_minutes' => self::DEFAULT_BLOCK_MINUTES,
+        'blocks_per_lap' => self::DEFAULT_BLOCKS_PER_LAP,
         'state' => 'active',
     ];
 
@@ -86,6 +102,7 @@ class CycleSlot extends Model
         return [
             'position' => 'integer',
             'block_minutes' => 'integer',
+            'blocks_per_lap' => 'integer',
             'boost_until' => 'date',
             'state' => CycleSlotState::class,
         ];

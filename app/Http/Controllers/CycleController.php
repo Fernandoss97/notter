@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Study\ResolveCurrentCycleBlock;
 use App\Actions\Study\ResolveCurrentFocusSession;
+use App\Actions\Study\ResolveLapOrder;
 use App\Concerns\ListsStudyPlans;
 use App\Concerns\SuggestsCoreSubjects;
 use App\Concerns\SummarizesCycleBlock;
@@ -26,6 +27,7 @@ class CycleController extends Controller
     public function __construct(
         private ResolveCurrentCycleBlock $resolveCurrentBlock,
         private ResolveCurrentFocusSession $resolveCurrentSession,
+        private ResolveLapOrder $lapOrder,
     ) {}
 
     /**
@@ -62,6 +64,7 @@ class CycleController extends Controller
                 'lap' => $currentBlock instanceof CycleBlock ? $currentBlock->lap : 0,
                 'currentBlockId' => $currentBlock?->id,
                 'slots' => $this->slotProps($slots, $currentBlock, $session),
+                'lapOrder' => $this->lapOrderProps($slots),
                 // Quantas matérias estão em primeiro contato, contra o que
                 // o método recomenda (§4). É o número que dá o sinal de
                 // ciclo inchado antes de a volta ficar longa demais.
@@ -84,8 +87,13 @@ class CycleController extends Controller
      * dela para devolvê-la ao ciclo — mas sem bloco: fora do rodízio, não
      * há vez.
      *
+     * Com peso maior que 1 a cadeira tem várias passagens na mesma volta, e
+     * a linha mostra a que está valendo: a primeira ainda aberta, ou a
+     * última quando todas fecharam. É a passagem que responde "quanto falta
+     * agora" — as outras a linha resume em "passagem 2 de 3".
+     *
      * @param  Collection<int, CycleSlot>  $slots
-     * @return array<int, array{id: int, subjectId: int, subjectName: string, subjectMode: string, subjectArea: string, blockMinutes: int, effectiveBlockMinutes: int, boosted: bool, state: string, isCurrent: bool, block: array<string, mixed>|null}>
+     * @return array<int, array{id: int, subjectId: int, subjectName: string, subjectMode: string, subjectArea: string, blockMinutes: int, effectiveBlockMinutes: int, blocksPerLap: int, blocksDoneInLap: int, currentPassage: int, boosted: bool, state: string, isCurrent: bool, block: array<string, mixed>|null}>
      */
     private function slotProps(Collection $slots, ?CycleBlock $currentBlock, ?StudySession $session): array
     {
@@ -95,11 +103,15 @@ class CycleController extends Controller
                 ->where('lap', $currentBlock->lap)
                 ->with('cycleSlot.subject')
                 ->get()
-                ->keyBy('cycle_slot_id')
+                ->sortBy('sequence')
+                ->groupBy('cycle_slot_id')
             : collect();
 
         return $slots->map(function (CycleSlot $slot) use ($blocks, $currentBlock, $session) {
-            $block = $blocks->get($slot->id);
+            /** @var Collection<int, CycleBlock> $lapBlocks */
+            $lapBlocks = $blocks->get($slot->id) ?? collect();
+            $block = $lapBlocks->first(fn (CycleBlock $candidate) => ! $candidate->isCompleted())
+                ?? $lapBlocks->last();
 
             return [
                 'id' => $slot->id,
@@ -108,6 +120,11 @@ class CycleController extends Controller
                 'subjectMode' => $slot->subject->mode->value,
                 'subjectArea' => $slot->subject->area->value,
                 'blockMinutes' => $slot->block_minutes,
+                'blocksPerLap' => $slot->blocks_per_lap,
+                'blocksDoneInLap' => $lapBlocks
+                    ->filter(fn (CycleBlock $candidate) => $candidate->isCompleted())
+                    ->count(),
+                'currentPassage' => $block instanceof CycleBlock ? $block->sequence : 0,
                 // O que o bloco vale hoje, já com o reforço somado: é esse
                 // o número que a linha precisa mostrar, senão a imersão
                 // seria um selo sem efeito visível.
@@ -123,8 +140,34 @@ class CycleController extends Controller
     }
 
     /**
+     * A fila da volta: cada passagem, na ordem em que acontece.
+     *
+     * A tela precisa dela para o aviso de áreas vizinhas, que com pesos
+     * deixou de ser a ordem das cadeiras — entre duas passagens de uma
+     * mesma matéria entram outras. A fila é calculada aqui, e não repetida
+     * em TypeScript, porque é ela que decide de quem é a vez: front e back
+     * discordando sobre isso seria a tela mentindo.
+     *
+     * @param  Collection<int, CycleSlot>  $slots
+     * @return array<int, array{slotId: int, sequence: int, subjectName: string, subjectArea: string}>
+     */
+    private function lapOrderProps(Collection $slots): array
+    {
+        $active = $slots->filter(fn (CycleSlot $slot) => $slot->isActive());
+
+        return $this->lapOrder->handle($active)
+            ->map(fn (array $passage) => [
+                'slotId' => $passage['slot']->id,
+                'sequence' => $passage['sequence'],
+                'subjectName' => $passage['slot']->subject->name,
+                'subjectArea' => $passage['slot']->subject->area->value,
+            ])
+            ->all();
+    }
+
+    /**
      * Disciplinas do plano que ainda não têm cadeira. Uma disciplina ocupa
-     * no máximo uma: peso maior se expressa em minutos por bloco.
+     * no máximo uma: peso maior se expressa em passagens e minutos.
      *
      * @param  Collection<int, CycleSlot>  $slots
      * @return array<int, array{id: int, name: string}>

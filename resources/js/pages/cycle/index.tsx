@@ -57,6 +57,10 @@ const RECOMMENDED_MAX_BLOCK_MINUTES = 90;
 const MIN_BLOCK_MINUTES = 5;
 const MAX_BLOCK_MINUTES = 120;
 
+/** Passagens por volta — ver `CycleSlot::MIN/MAX_BLOCKS_PER_LAP`. */
+const MIN_BLOCKS_PER_LAP = 1;
+const MAX_BLOCKS_PER_LAP = 5;
+
 interface CycleIndexProps {
     plans: PlanSummary[];
     plan: { id: number; name: string } | null;
@@ -84,13 +88,16 @@ export default function CycleIndex({
     }
 
     const active = cycle.slots.filter((slot) => slot.state === 'active');
-    const done = active.filter((slot) => slot.block?.completed).length;
+    // Blocos, não disciplinas: com peso, uma matéria responde por mais de
+    // um bloco da volta, e é o bloco que o rodízio conta.
+    const blocksInLap = cycle.lapOrder.length;
+    const done = active.reduce((total, slot) => total + slot.blocksDoneInLap, 0);
     const switchingClassName = cn(
         'transition-opacity duration-base ease-out',
         busy && 'opacity-50',
     );
     const crowded = cycle.readingCount > cycle.recommendedReading;
-    const clashes = findAreaClashes(cycle.slots);
+    const clashes = findAreaClashes(cycle.lapOrder);
 
     return (
         <>
@@ -102,7 +109,7 @@ export default function CycleIndex({
                         subtitle={
                             active.length === 0
                                 ? `${plan.name} · nenhuma disciplina no rodízio`
-                                : `${plan.name} · volta ${cycle.lap} · ${done} de ${active.length} blocos`
+                                : `${plan.name} · volta ${cycle.lap} · ${done} de ${blocksInLap} blocos`
                         }
                         actions={
                             <>
@@ -488,6 +495,11 @@ function SlotRow({
                         {block
                             ? `${formatDurationMinutes(Math.floor(block.elapsedSeconds / 60))} de ${formatDurationMinutes(block.targetMinutes)}`
                             : `${formatDurationMinutes(slot.effectiveBlockMinutes)} por bloco · fora do rodízio`}
+                        {/* Só quem tem peso ganha o contador: "passagem 1 de
+                            1" seria ruído em toda linha de um ciclo comum. */}
+                        {slot.blocksPerLap > 1 &&
+                            slot.currentPassage > 0 &&
+                            ` · passagem ${slot.currentPassage} de ${slot.blocksPerLap}`}
                         {slot.boosted &&
                             ` · ${slot.blockMinutes}min quando a imersão acabar`}
                     </span>
@@ -678,12 +690,15 @@ function Badge({
 }
 
 /**
- * Duração do bloco e entrada/saída do rodízio. A duração nova só vale para
- * as próximas voltas — o bloco aberto congelou a sua quando abriu.
+ * Duração do bloco, peso no rodízio e entrada/saída dele. Os dois números
+ * novos só valem para as próximas voltas — o bloco aberto congelou a
+ * duração dele quando abriu, e a passagem que já tem tempo dentro não é
+ * apagada por um peso menor.
  */
 function SlotSettings({ slot }: { slot: CycleSlotSummary }) {
     const [editing, setEditing] = useState(false);
     const [minutes, setMinutes] = useState(String(slot.blockMinutes));
+    const [passages, setPassages] = useState(String(slot.blocksPerLap));
     const paused = slot.state === 'paused';
 
     function save(event: FormEvent) {
@@ -691,7 +706,10 @@ function SlotSettings({ slot }: { slot: CycleSlotSummary }) {
 
         router.put(
             updateSlot(slot.id).url,
-            { block_minutes: Number(minutes) },
+            {
+                block_minutes: Number(minutes),
+                blocks_per_lap: Number(passages),
+            },
             { preserveScroll: true, onSuccess: () => setEditing(false) },
         );
     }
@@ -718,6 +736,15 @@ function SlotSettings({ slot }: { slot: CycleSlotSummary }) {
                     onChange={(event) => setMinutes(event.target.value)}
                     className="w-24"
                 />
+                <Input
+                    aria-label={`Passagens por volta de ${slot.subjectName}`}
+                    type="number"
+                    min={MIN_BLOCKS_PER_LAP}
+                    max={MAX_BLOCKS_PER_LAP}
+                    value={passages}
+                    onChange={(event) => setPassages(event.target.value)}
+                    className="w-20"
+                />
                 <Button type="submit">Salvar</Button>
             </form>
         );
@@ -725,12 +752,16 @@ function SlotSettings({ slot }: { slot: CycleSlotSummary }) {
 
     return (
         <>
+            {/* `60min ×2` em vez de só `60min`: o peso muda o que a volta
+                custa, e um número que muda o rodízio não pode viver
+                escondido atrás de um clique. */}
             <Button
                 variant="ghost"
                 aria-label={`Ajustar o bloco de ${slot.subjectName}`}
                 onClick={() => setEditing(true)}
             >
                 {slot.blockMinutes}min
+                {slot.blocksPerLap > 1 && ` ×${slot.blocksPerLap}`}
             </Button>
             <Button
                 variant="ghost"
@@ -766,6 +797,7 @@ function AddSlotPanel({
     const form = useForm({
         subject_id: '',
         block_minutes: '60',
+        blocks_per_lap: '1',
         boost: false,
     });
     // O campo aceita qualquer bloco utilizável; o que a faixa recomendada
@@ -777,6 +809,7 @@ function AddSlotPanel({
     const underRecommended =
         chosenMinutes >= MIN_BLOCK_MINUTES &&
         chosenMinutes < RECOMMENDED_MIN_BLOCK_MINUTES;
+    const weighted = Number(form.data.blocks_per_lap) > 1;
 
     function submit(event: FormEvent) {
         event.preventDefault();
@@ -784,6 +817,7 @@ function AddSlotPanel({
         form.transform((data) => ({
             subject_id: Number(data.subject_id),
             block_minutes: Number(data.block_minutes),
+            blocks_per_lap: Number(data.blocks_per_lap),
             boost: data.boost,
         }));
 
@@ -861,6 +895,30 @@ function AddSlotPanel({
                         )}
                     </div>
 
+                    <div className="flex w-32 flex-col gap-2">
+                        <Label htmlFor="cycle_blocks_per_lap">
+                            Passagens por volta
+                        </Label>
+                        <Input
+                            id="cycle_blocks_per_lap"
+                            type="number"
+                            min={MIN_BLOCKS_PER_LAP}
+                            max={MAX_BLOCKS_PER_LAP}
+                            value={form.data.blocks_per_lap}
+                            onChange={(event) =>
+                                form.setData(
+                                    'blocks_per_lap',
+                                    event.target.value,
+                                )
+                            }
+                        />
+                        {form.errors.blocks_per_lap && (
+                            <p className="text-sm text-destructive">
+                                {form.errors.blocks_per_lap}
+                            </p>
+                        )}
+                    </div>
+
                     <label className="flex items-center gap-2 pb-2 text-sm text-fg-2">
                         <input
                             type="checkbox"
@@ -892,6 +950,22 @@ function AddSlotPanel({
                         escolhida e some sozinho no fim do prazo — assim ele não
                         vira uma prioridade eterna que ninguém lembra de
                         desfazer.
+                    </p>
+
+                    <p
+                        data-slot="cycle-weight-hint"
+                        aria-hidden={!weighted}
+                        inert={!weighted || undefined}
+                        hidden={!weighted}
+                        className={cn(
+                            'w-full text-xs text-muted-foreground',
+                            !weighted && 'hidden',
+                        )}
+                    >
+                        A disciplina entra {form.data.blocks_per_lap} vezes na
+                        mesma volta, com as outras no meio — não duas seguidas.
+                        Para uma sentada mais longa, o que muda é a duração do
+                        bloco.
                     </p>
 
                     {/* Um parágrafo só para os dois lados da faixa: dois

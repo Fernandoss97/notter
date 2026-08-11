@@ -294,6 +294,12 @@ export type CycleSlotSummary = {
     blockMinutes: number;
     /** O que o bloco vale hoje, já com o reforço somado. */
     effectiveBlockMinutes: number;
+    /** Quantas vezes a disciplina passa por volta. */
+    blocksPerLap: number;
+    /** Quantas dessas passagens já fecharam na volta corrente. */
+    blocksDoneInLap: number;
+    /** Qual passagem o `block` abaixo descreve; 0 quando não há nenhuma. */
+    currentPassage: number;
     /** Ainda dentro da janela de imersão inicial de uma matéria nova. */
     boosted: boolean;
     state: CycleSlotState;
@@ -302,10 +308,24 @@ export type CycleSlotSummary = {
     block: CycleBlockSummary | null;
 };
 
+/**
+ * Uma passagem na fila da volta. Vem pronta do servidor: é ela que decide
+ * de quem é a vez, e refazer essa conta aqui seria a tela discordando do
+ * rodízio.
+ */
+export type CycleLapPassage = {
+    slotId: number;
+    sequence: number;
+    subjectName: string;
+    subjectArea: SubjectArea;
+};
+
 export type StudyCycle = {
     lap: number;
     currentBlockId: number | null;
     slots: CycleSlotSummary[];
+    /** As passagens da volta, na ordem em que acontecem. */
+    lapOrder: CycleLapPassage[];
     /** Matérias em primeiro contato hoje, contra o que se recomenda. */
     readingCount: number;
     recommendedReading: number;

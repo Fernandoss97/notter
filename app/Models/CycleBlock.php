@@ -18,19 +18,21 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $cycle_slot_id
  * @property int $lap
+ * @property int $sequence
  * @property int $target_seconds
  * @property int $accumulated_seconds
  * @property Carbon|null $completed_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['lap', 'target_seconds', 'accumulated_seconds', 'completed_at'])]
+#[Fillable(['lap', 'sequence', 'target_seconds', 'accumulated_seconds', 'completed_at'])]
 class CycleBlock extends Model
 {
     /** @use HasFactory<CycleBlockFactory> */
     use HasFactory;
 
     protected $attributes = [
+        'sequence' => 1,
         'accumulated_seconds' => 0,
     ];
 
@@ -41,6 +43,7 @@ class CycleBlock extends Model
     {
         return [
             'lap' => 'integer',
+            'sequence' => 'integer',
             'target_seconds' => 'integer',
             'accumulated_seconds' => 'integer',
             'completed_at' => 'datetime',

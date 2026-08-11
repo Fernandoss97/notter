@@ -128,6 +128,41 @@ test('finishing the theory of a subject frees room in the rotation', function ()
         ->assertNoJavaScriptErrors();
 });
 
+test('a subject can be given a second passage in the same lap', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create(['name' => 'Concurso XYZ']);
+
+    foreach (['Direito Constitucional', 'Português'] as $position => $name) {
+        CycleSlot::factory()->create([
+            'study_plan_id' => $plan->id,
+            'subject_id' => Subject::factory()->for($plan)->create(['name' => $name])->id,
+            'position' => $position,
+            'block_minutes' => 60,
+        ]);
+    }
+
+    $this->actingAs($user);
+
+    $page = visit('/ciclo');
+
+    $page->assertSee('0 de 2 blocos')
+        ->assertNoJavaScriptErrors();
+
+    // O peso se ajusta pelo mesmo botão que a duração: os dois números
+    // dizem quanto a matéria custa na volta.
+    $page->click('[aria-label="Ajustar o bloco de Direito Constitucional"]')
+        ->fill('[aria-label="Passagens por volta de Direito Constitucional"]', '2')
+        ->click('button:text-is("Salvar")')
+        ->assertNoJavaScriptErrors();
+
+    // A volta ganhou um bloco, e a linha passa a dizer de qual passagem
+    // está falando.
+    $page->assertSee('0 de 3 blocos')
+        ->assertSee('60min ×2')
+        ->assertSee('passagem 1 de 2')
+        ->assertNoJavaScriptErrors();
+});
+
 test('the rotation warns about neighbouring families and reorders on request', function () {
     $user = User::factory()->create();
     $plan = StudyPlan::factory()->for($user)->active()->create(['name' => 'Concurso XYZ']);

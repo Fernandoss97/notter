@@ -10,6 +10,15 @@ use Illuminate\Database\Eloquent\Collection;
 class ResolveCurrentCycleBlock
 {
     /**
+     * A fila da volta vem por injeção, mas com um padrão: esta ação é
+     * instanciada direto (`new ResolveCurrentCycleBlock`) em dezenas de
+     * testes que nada têm a ver com ordenação, e obrigá-los a montar a
+     * dependência seria ruído em todos eles. `ResolveLapOrder` não tem
+     * estado nem colaborador — construí-la aqui não esconde nada.
+     */
+    public function __construct(private ResolveLapOrder $lapOrder = new ResolveLapOrder) {}
+
+    /**
      * O bloco corrente do rodízio — o único caminho até ele.
      *
      * O ponteiro do ciclo não é armazenado, é derivado, pelo mesmo motivo
@@ -79,21 +88,28 @@ class ResolveCurrentCycleBlock
      * A escrita é `insertOrIgnore` e não um create por cadeira faltante:
      * esta ação roda em toda visita ao foco e ao ciclo, e duas abas abertas
      * ao mesmo tempo veriam ambas a volta vazia e tentariam abri-la. Com o
-     * create, a segunda estouraria no índice único `(cycle_slot_id, lap)` e
-     * derrubaria a tela principal do app com um 500. O índice está certo; o
-     * que precisava mudar era a escrita. Duas abas já são cenário previsto
-     * aqui — ver AdvanceFocusPhase.
+     * create, a segunda estouraria no índice único
+     * `(cycle_slot_id, lap, sequence)` e derrubaria a tela principal do app
+     * com um 500. O índice está certo; o que precisava mudar era a escrita.
+     * Duas abas já são cenário previsto aqui — ver AdvanceFocusPhase.
+     *
+     * A `sequence` é sempre 1..N, calculada do peso e de mais nada. Derivá-la
+     * de uma contagem de linhas ("as que existem, mais um") destruiria a
+     * idempotência de que o parágrafo acima depende.
      *
      * @param  Collection<int, CycleSlot>  $slots
      */
     private function openLap(Collection $slots, int $lap): void
     {
+        $this->dropSurplusBlocks($slots, $lap);
+
         $now = now();
 
-        $rows = $slots->map(fn (CycleSlot $slot) => [
-            'cycle_slot_id' => $slot->id,
+        $rows = $this->lapOrder->handle($slots)->map(fn (array $passage) => [
+            'cycle_slot_id' => $passage['slot']->id,
             'lap' => $lap,
-            'target_seconds' => $slot->targetSeconds(),
+            'sequence' => $passage['sequence'],
+            'target_seconds' => $passage['slot']->targetSeconds(),
             'accumulated_seconds' => 0,
             'created_at' => $now,
             'updated_at' => $now,
@@ -103,10 +119,41 @@ class ResolveCurrentCycleBlock
     }
 
     /**
+     * Passagens que sobraram de um peso maior, na volta em andamento.
+     *
+     * Baixar o peso no meio da volta deixaria blocos abertos que ninguém
+     * mais vai estudar — e volta com bloco aberto não fecha, então o rodízio
+     * pararia ali para sempre. Some quem ainda não tinha nada dentro.
+     *
+     * Quem já acumulou tempo fica: é a mesma promessa que faz o número da
+     * volta recuar quando uma cadeira volta do descanso — bloco com tempo
+     * dentro não desaparece sem alguém ver. Esse fecha estudando ou pelo
+     * botão de encerrar, e o peso novo vale da volta seguinte.
+     *
+     * @param  Collection<int, CycleSlot>  $slots
+     */
+    private function dropSurplusBlocks(Collection $slots, int $lap): void
+    {
+        $weights = $slots->pluck('blocks_per_lap', 'id');
+
+        $surplus = CycleBlock::query()
+            ->whereIn('cycle_slot_id', $slots->modelKeys())
+            ->where('lap', $lap)
+            ->open()
+            ->where('accumulated_seconds', 0)
+            ->get()
+            ->filter(fn (CycleBlock $block) => $block->sequence > (int) $weights->get($block->cycle_slot_id, 1));
+
+        if ($surplus->isNotEmpty()) {
+            CycleBlock::query()->whereKey($surplus->modelKeys())->delete();
+        }
+    }
+
+    /**
      * O bloco da vez dentro da volta. Um bloco já começado ganha de
      * qualquer outro: o rodízio não abandona bloco pela metade, que é a
      * continuidade que a spec pede (§3). Só entre blocos intocados a
-     * ordem das cadeiras decide.
+     * fila da volta decide.
      *
      * @param  Collection<int, CycleSlot>  $slots
      */
@@ -118,10 +165,31 @@ class ResolveCurrentCycleBlock
             ->open()
             ->with('cycleSlot.subject')
             ->get()
-            ->sortBy(fn (CycleBlock $block) => $block->cycleSlot->position)
+            ->sortBy($this->queuePosition($slots))
             ->values();
 
         return $blocks->first(fn (CycleBlock $block) => $block->accumulated_seconds > 0)
             ?? $blocks->first();
+    }
+
+    /**
+     * Onde cada bloco cai na fila da volta. Blocos que a fila não conhece —
+     * a sobra com tempo dentro, que o peso menor deixou para trás — vão para
+     * o fim, para serem oferecidos depois do que ainda está no plano.
+     *
+     * @param  Collection<int, CycleSlot>  $slots
+     * @return callable(CycleBlock): int
+     */
+    private function queuePosition(Collection $slots): callable
+    {
+        $queue = $this->lapOrder->handle($slots)
+            ->mapWithKeys(fn (array $passage, int $index) => [
+                $passage['slot']->id.':'.$passage['sequence'] => $index,
+            ]);
+
+        return fn (CycleBlock $block) => $queue->get(
+            $block->cycle_slot_id.':'.$block->sequence,
+            PHP_INT_MAX,
+        );
     }
 }
