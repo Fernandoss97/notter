@@ -29,7 +29,7 @@ test('moving a subject to review shrinks its share of the rotation', function ()
 
     $slot->refresh();
     expect($subject->refresh()->mode)->toBe(SubjectMode::Review)
-        ->and($slot->block_minutes)->toBe(CycleSlot::MIN_BLOCK_MINUTES)
+        ->and($slot->block_minutes)->toBe(CycleSlot::DEFAULT_BLOCK_MINUTES)
         ->and($slot->boost_until)->toBeNull()
         ->and($slot->state)->toBe(CycleSlotState::Active);
 });
@@ -82,9 +82,9 @@ test('a new subject can enter in immersion, with an expiry date', function () {
     $slot = (new AddCycleSlot)->handle($plan, $subject, boost: true);
 
     // A duração escolhida não muda: o reforço é somado por cima dela.
-    expect($slot->block_minutes)->toBe(CycleSlot::MIN_BLOCK_MINUTES)
+    expect($slot->block_minutes)->toBe(CycleSlot::DEFAULT_BLOCK_MINUTES)
         ->and($slot->effectiveBlockMinutes())->toBe(
-            CycleSlot::MIN_BLOCK_MINUTES + CycleSlot::BOOST_EXTRA_MINUTES
+            CycleSlot::DEFAULT_BLOCK_MINUTES + CycleSlot::BOOST_EXTRA_MINUTES
         )
         ->and($slot->boost_until->toDateString())
         ->toBe(today()->addWeeks(AddCycleSlot::BOOST_WEEKS)->toDateString())

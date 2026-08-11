@@ -50,7 +50,7 @@ class AddCycleSlot
         return $plan->cycleSlots()->create([
             'subject_id' => $subject->id,
             'position' => (int) $plan->cycleSlots()->max('position') + 1,
-            'block_minutes' => $blockMinutes ?? CycleSlot::MIN_BLOCK_MINUTES,
+            'block_minutes' => $blockMinutes ?? CycleSlot::DEFAULT_BLOCK_MINUTES,
             'boost_until' => $boost ? today()->addWeeks(self::BOOST_WEEKS) : null,
         ]);
     }

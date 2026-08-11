@@ -11,9 +11,10 @@ use Illuminate\Validation\Rule;
 class UpdateCycleSlotRequest extends FormRequest
 {
     /**
-     * O teto de 120 minutos é regra (§2 da spec); os 90 recomendados são
-     * só aviso na tela, porque quem estuda Contabilidade sabe por que
-     * estourou.
+     * A faixa de 60 a 90 minutos que o método recomenda é aviso na tela,
+     * não regra: quem estuda Contabilidade sabe por que estourou, e quem
+     * só tem meia hora antes do trabalho sabe por que ficou abaixo. O que
+     * a validação guarda é o intervalo em que um bloco ainda é um bloco.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */

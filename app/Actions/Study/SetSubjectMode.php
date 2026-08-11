@@ -43,7 +43,7 @@ class SetSubjectMode
 
             match ($mode) {
                 SubjectMode::Review => $slot->update([
-                    'block_minutes' => CycleSlot::MIN_BLOCK_MINUTES,
+                    'block_minutes' => CycleSlot::DEFAULT_BLOCK_MINUTES,
                     'boost_until' => null,
                     'state' => CycleSlotState::Active,
                 ]),

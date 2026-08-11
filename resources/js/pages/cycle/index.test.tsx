@@ -67,7 +67,9 @@ function slot(overrides: Partial<CycleSlotSummary> = {}): CycleSlotSummary {
     return { ...base, ...overrides };
 }
 
-function block(overrides: Partial<NonNullable<CycleSlotSummary['block']>> = {}) {
+function block(
+    overrides: Partial<NonNullable<CycleSlotSummary['block']>> = {},
+) {
     return {
         id: 100,
         subjectId: 10,
@@ -175,9 +177,7 @@ describe('cycle screen', () => {
 
         expect(screen.getByText('Fora do rodízio')).toBeInTheDocument();
         expect(
-            screen.getByLabelText(
-                'Devolver Direito Constitucional ao rodízio',
-            ),
+            screen.getByLabelText('Devolver Direito Constitucional ao rodízio'),
         ).toBeInTheDocument();
     });
 
@@ -186,9 +186,7 @@ describe('cycle screen', () => {
         renderCycle();
 
         await user.click(
-            screen.getByLabelText(
-                'Mover Direito Constitucional para baixo',
-            ),
+            screen.getByLabelText('Mover Direito Constitucional para baixo'),
         );
 
         expect(post).toHaveBeenCalledWith(
@@ -223,6 +221,36 @@ describe('cycle screen', () => {
         expect(screen.getByText(/Blocos acima de 90 minutos/)).toHaveAttribute(
             'aria-hidden',
             'false',
+        );
+    });
+
+    // O intervalo do método deixou de ser trava e virou conselho: um bloco
+    // de meia hora entra, com o custo dito na tela.
+    it('says what a block under the recommended hour costs, without blocking it', async () => {
+        const user = userEvent.setup();
+        renderCycle();
+
+        const input = screen.getByLabelText('Minutos por bloco');
+        await user.clear(input);
+        await user.type(input, '30');
+
+        const hint = screen.getByText(/Blocos abaixo de 60 minutos/);
+        expect(hint).toHaveAttribute('aria-hidden', 'false');
+        expect(input).toHaveAttribute('min', '5');
+        expect(input).not.toHaveAttribute('step');
+    });
+
+    it('keeps the length advice quiet inside the recommended range', async () => {
+        const user = userEvent.setup();
+        renderCycle();
+
+        const input = screen.getByLabelText('Minutos por bloco');
+        await user.clear(input);
+        await user.type(input, '75');
+
+        expect(screen.getByText(/Blocos acima de 90 minutos/)).toHaveAttribute(
+            'aria-hidden',
+            'true',
         );
     });
 
@@ -285,9 +313,9 @@ describe('cycle screen', () => {
         expect(
             screen.getByLabelText('Situação de Direito Constitucional'),
         ).toHaveTextContent('Leitura');
-        expect(screen.getByLabelText('Situação de Português')).toHaveTextContent(
-            'Revisão',
-        );
+        expect(
+            screen.getByLabelText('Situação de Português'),
+        ).toHaveTextContent('Revisão');
     });
 
     it('marks a subject in its initial immersion and says what it drops to', () => {
@@ -339,8 +367,16 @@ describe('cycle screen', () => {
     it('points out two subjects of the same family in a row', () => {
         renderCycle({
             slots: [
-                slot({ id: 1, subjectName: 'Constitucional', subjectArea: 'law' }),
-                slot({ id: 2, subjectName: 'Administrativo', subjectArea: 'law' }),
+                slot({
+                    id: 1,
+                    subjectName: 'Constitucional',
+                    subjectArea: 'law',
+                }),
+                slot({
+                    id: 2,
+                    subjectName: 'Administrativo',
+                    subjectArea: 'law',
+                }),
             ],
         });
 
@@ -357,27 +393,26 @@ describe('cycle screen', () => {
             ],
         });
 
-        expect(
-            screen.getByText(/estão em sequência/),
-        ).toHaveAttribute('data-visible', 'false');
+        expect(screen.getByText(/estão em sequência/)).toHaveAttribute(
+            'data-visible',
+            'false',
+        );
     });
 
     it('suggests the core size only while the cycle is below it', () => {
         renderCycle({ recommendedCore: 5 });
 
-        expect(screen.getByText(/o método sugere começar com 5/)).toHaveAttribute(
-            'data-visible',
-            'true',
-        );
+        expect(
+            screen.getByText(/o método sugere começar com 5/),
+        ).toHaveAttribute('data-visible', 'true');
     });
 
     it('does not push the core suggestion on a cycle that already has enough', () => {
         renderCycle({ recommendedCore: 2 });
 
-        expect(screen.getByText(/o método sugere começar com 2/)).toHaveAttribute(
-            'data-visible',
-            'false',
-        );
+        expect(
+            screen.getByText(/o método sugere começar com 2/),
+        ).toHaveAttribute('data-visible', 'false');
     });
 
     it('reorders the rotation by family on request', async () => {

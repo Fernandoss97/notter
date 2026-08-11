@@ -33,16 +33,32 @@ class CycleSlot extends Model
     use HasFactory;
 
     /**
-     * Os limites de duração de um bloco (§2 da spec): 60 a 90 minutos, com
-     * exceção até 120 para matérias densas. O teto é regra; o intervalo
-     * recomendado é só aviso — quem estuda Contabilidade sabe por que
-     * estourou os 90.
+     * A duração de um bloco é escolha de quem estuda. O que a spec (§2)
+     * chama de 60 a 90 minutos, com exceção até 120 para matérias densas,
+     * é recomendação — e recomendação vira aviso na tela, não trava.
+     *
+     * O que sobra como regra é o intervalo em que um bloco ainda é um
+     * bloco: abaixo de 5 minutos o rodízio não teria o que medir, e o teto
+     * de 120 é o limite que o método reconhece como exceção legítima.
      */
-    public const MIN_BLOCK_MINUTES = 60;
+    public const MIN_BLOCK_MINUTES = 5;
+
+    public const MAX_BLOCK_MINUTES = 120;
+
+    /**
+     * A faixa que o método recomenda. Só o aviso da tela lê estes dois — a
+     * validação não.
+     */
+    public const RECOMMENDED_MIN_BLOCK_MINUTES = 60;
 
     public const RECOMMENDED_MAX_BLOCK_MINUTES = 90;
 
-    public const MAX_BLOCK_MINUTES = 120;
+    /**
+     * A duração de quem não escolheu nenhuma: o piso da faixa recomendada.
+     * Separada do mínimo aceito de propósito — abrir o leque do que se
+     * pode escolher não é motivo para o padrão do sistema mudar junto.
+     */
+    public const DEFAULT_BLOCK_MINUTES = self::RECOMMENDED_MIN_BLOCK_MINUTES;
 
     /**
      * Quanto a imersão inicial acrescenta ao bloco enquanto vale (§4).
@@ -58,7 +74,7 @@ class CycleSlot extends Model
 
     protected $attributes = [
         'position' => 0,
-        'block_minutes' => self::MIN_BLOCK_MINUTES,
+        'block_minutes' => self::DEFAULT_BLOCK_MINUTES,
         'state' => 'active',
     ];
 

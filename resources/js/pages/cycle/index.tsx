@@ -46,8 +46,16 @@ import { index as planIndex } from '@/routes/plans';
 import { update as updateSubject } from '@/routes/subjects';
 import type { CycleSlotSummary, PlanSummary, StudyCycle } from '@/types/study';
 
-/** Acima disto a tela avisa, mas não impede — ver CycleSlot::MAX. */
+/**
+ * A faixa que o método recomenda. Fora dela a tela avisa, nunca impede —
+ * espelha `CycleSlot::RECOMMENDED_{MIN,MAX}_BLOCK_MINUTES`.
+ */
+const RECOMMENDED_MIN_BLOCK_MINUTES = 60;
 const RECOMMENDED_MAX_BLOCK_MINUTES = 90;
+
+/** O que a validação de fato recusa — ver `CycleSlot::MIN/MAX`. */
+const MIN_BLOCK_MINUTES = 5;
+const MAX_BLOCK_MINUTES = 120;
 
 interface CycleIndexProps {
     plans: PlanSummary[];
@@ -699,12 +707,13 @@ function SlotSettings({ slot }: { slot: CycleSlotSummary }) {
     if (editing) {
         return (
             <form onSubmit={save} className="flex items-center gap-1">
+                {/* Sem `step`: de 5 em 5 as setas do campo não alcançavam
+                    um bloco de 25 ou de 45 minutos sem digitar por cima. */}
                 <Input
                     aria-label={`Minutos por bloco de ${slot.subjectName}`}
                     type="number"
-                    min={60}
-                    max={120}
-                    step={5}
+                    min={MIN_BLOCK_MINUTES}
+                    max={MAX_BLOCK_MINUTES}
                     value={minutes}
                     onChange={(event) => setMinutes(event.target.value)}
                     className="w-24"
@@ -759,8 +768,15 @@ function AddSlotPanel({
         block_minutes: '60',
         boost: false,
     });
-    const overRecommended =
-        Number(form.data.block_minutes) > RECOMMENDED_MAX_BLOCK_MINUTES;
+    // O campo aceita qualquer bloco utilizável; o que a faixa recomendada
+    // rende agora é um aviso dos dois lados, no lugar da trava que havia.
+    // Campo vazio não conta como bloco curto — quem apagou para redigitar
+    // não levou conselho nenhum.
+    const chosenMinutes = Number(form.data.block_minutes);
+    const overRecommended = chosenMinutes > RECOMMENDED_MAX_BLOCK_MINUTES;
+    const underRecommended =
+        chosenMinutes >= MIN_BLOCK_MINUTES &&
+        chosenMinutes < RECOMMENDED_MIN_BLOCK_MINUTES;
 
     function submit(event: FormEvent) {
         event.preventDefault();
@@ -828,9 +844,8 @@ function AddSlotPanel({
                         <Input
                             id="cycle_block_minutes"
                             type="number"
-                            min={60}
-                            max={120}
-                            step={5}
+                            min={MIN_BLOCK_MINUTES}
+                            max={MAX_BLOCK_MINUTES}
                             value={form.data.block_minutes}
                             onChange={(event) =>
                                 form.setData(
@@ -879,19 +894,24 @@ function AddSlotPanel({
                         desfazer.
                     </p>
 
+                    {/* Um parágrafo só para os dois lados da faixa: dois
+                        avisos montados lado a lado reservariam espaço para
+                        um conselho que nunca aparece junto com o outro. */}
                     <p
                         data-slot="cycle-block-warning"
-                        aria-hidden={!overRecommended}
-                        inert={!overRecommended || undefined}
-                        hidden={!overRecommended}
+                        aria-hidden={!overRecommended && !underRecommended}
+                        inert={
+                            (!overRecommended && !underRecommended) || undefined
+                        }
+                        hidden={!overRecommended && !underRecommended}
                         className={cn(
                             'w-full text-xs text-status-warning',
-                            !overRecommended && 'hidden',
+                            !overRecommended && !underRecommended && 'hidden',
                         )}
                     >
-                        Blocos acima de 90 minutos são a exceção, não a regra —
-                        valem para matérias densas como Contabilidade ou
-                        Estatística.
+                        {underRecommended
+                            ? 'Blocos abaixo de 60 minutos rendem menos por volta: a disciplina volta antes, mas cada passagem avança pouco. Vale quando o dia não dá para mais que isso.'
+                            : 'Blocos acima de 90 minutos são a exceção, não a regra — valem para matérias densas como Contabilidade ou Estatística.'}
                     </p>
                 </form>
             )}

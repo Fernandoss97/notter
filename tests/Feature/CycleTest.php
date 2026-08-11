@@ -66,7 +66,9 @@ test('a subject from another plan is refused', function () {
         ->assertSessionHasErrors('subject_id');
 });
 
-test('a block shorter than an hour is refused', function () {
+// A hora recomendada é conselho, não porteiro: meia hora antes do
+// trabalho é um bloco legítimo, e a tela avisa em vez de recusar.
+test('a block shorter than the recommended hour is accepted', function () {
     $user = User::factory()->create();
     $plan = StudyPlan::factory()->for($user)->active()->create();
     $subject = Subject::factory()->for($plan)->create();
@@ -74,6 +76,19 @@ test('a block shorter than an hour is refused', function () {
     $this->actingAs($user)
         ->from(route('cycle.index'))
         ->post(route('cycle-slots.store'), ['subject_id' => $subject->id, 'block_minutes' => 30])
+        ->assertRedirect(route('cycle.index'));
+
+    expect($plan->cycleSlots()->sole()->block_minutes)->toBe(30);
+});
+
+test('a block with no real length to it is refused', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+    $subject = Subject::factory()->for($plan)->create();
+
+    $this->actingAs($user)
+        ->from(route('cycle.index'))
+        ->post(route('cycle-slots.store'), ['subject_id' => $subject->id, 'block_minutes' => 0])
         ->assertSessionHasErrors('block_minutes');
 });
 
@@ -106,6 +121,28 @@ test('a seat can be paused and brought back without losing it', function () {
         ->put(route('cycle-slots.update', $slot), ['state' => 'active']);
 
     expect($slot->refresh()->state)->toBe(CycleSlotState::Active);
+});
+
+test('a seat already in the rotation can be set to any usable length', function () {
+    $user = User::factory()->create();
+    $plan = StudyPlan::factory()->for($user)->active()->create();
+    $slot = CycleSlot::factory()->create([
+        'study_plan_id' => $plan->id,
+        'subject_id' => Subject::factory()->for($plan)->create()->id,
+        'block_minutes' => 60,
+    ]);
+
+    $this->actingAs($user)->from(route('cycle.index'))
+        ->put(route('cycle-slots.update', $slot), ['block_minutes' => 25])
+        ->assertRedirect(route('cycle.index'));
+
+    expect($slot->refresh()->block_minutes)->toBe(25);
+
+    $this->actingAs($user)->from(route('cycle.index'))
+        ->put(route('cycle-slots.update', $slot), ['block_minutes' => 121])
+        ->assertSessionHasErrors('block_minutes');
+
+    expect($slot->refresh()->block_minutes)->toBe(25);
 });
 
 test('a seat from another user cannot be touched', function () {
