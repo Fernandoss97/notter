@@ -84,6 +84,10 @@ class DashboardController extends Controller
             'stats' => [
                 'weekMinutes' => $this->minutesStudied($user, $weekStart, now()->endOfWeek(), $excludeBreaks, $activeSession),
                 'weekGoalMinutes' => $plan instanceof StudyPlan ? $plan->weekly_goal_minutes : 0,
+                // A linha de meta das barras dos últimos dias. Vem da
+                // preferência do usuário, e não mais da semanal dividida
+                // por sete, que supunha estudo nos sete dias.
+                'dailyGoalMinutes' => $settings->daily_goal_minutes,
                 'topicsDone' => $topicsDone,
                 'topicsTotal' => $topicsTotal,
                 'topicsDoneThisWeek' => $topicsDoneThisWeek,

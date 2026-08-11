@@ -20,6 +20,7 @@ class PomodoroSettingController extends Controller
                 'shortBreakMinutes' => $settings->short_break_minutes,
                 'longBreakMinutes' => $settings->long_break_minutes,
                 'cyclesBeforeLongBreak' => $settings->cycles_before_long_break,
+                'dailyGoalMinutes' => $settings->daily_goal_minutes,
                 'autoStartBreak' => $settings->auto_start_break,
                 'autoStartFocus' => $settings->auto_start_focus,
                 'logSessionOnFinish' => $settings->log_session_on_finish,

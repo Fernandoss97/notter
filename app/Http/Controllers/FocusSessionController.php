@@ -118,7 +118,10 @@ class FocusSessionController extends Controller
                     $settings->exclude_breaks_from_study_time,
                     $session,
                 ),
-                'goalMinutes' => $plan instanceof StudyPlan ? (int) round($plan->weekly_goal_minutes / 7) : 0,
+                // A meta do dia é do usuário, não do plano: ela descreve a
+                // rotina de quem estuda, e trocar de concurso não muda
+                // quantas horas cabem no dia.
+                'goalMinutes' => $settings->daily_goal_minutes,
             ],
             'dueReviews' => $this->dueReviews($user),
         ]);

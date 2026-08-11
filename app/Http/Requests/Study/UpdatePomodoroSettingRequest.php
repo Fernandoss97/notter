@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Study;
 
+use App\Models\PomodoroSetting;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -18,6 +19,12 @@ class UpdatePomodoroSettingRequest extends FormRequest
             'short_break_minutes' => ['required', 'integer', 'min:1', 'max:60'],
             'long_break_minutes' => ['required', 'integer', 'min:1', 'max:90'],
             'cycles_before_long_break' => ['required', Rule::in([2, 3, 4, 5])],
+            'daily_goal_minutes' => [
+                'required',
+                'integer',
+                'min:'.PomodoroSetting::MIN_DAILY_GOAL_MINUTES,
+                'max:'.PomodoroSetting::MAX_DAILY_GOAL_MINUTES,
+            ],
             'auto_start_break' => ['required', 'boolean'],
             'auto_start_focus' => ['required', 'boolean'],
             'log_session_on_finish' => ['required', 'boolean'],

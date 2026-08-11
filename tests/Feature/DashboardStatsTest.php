@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\PomodoroSetting;
 use App\Models\StudyPlan;
 use App\Models\StudySession;
 use App\Models\Subject;
@@ -48,6 +49,22 @@ test('the dashboard sums completed session minutes for this week', function () {
         ->get('/dashboard')
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page->where('stats.weekMinutes', 50));
+});
+
+// A linha de meta das barras diárias vem da preferência do usuário, e a
+// semanal continua sendo do plano: são duas metas, e nenhuma deriva da
+// outra.
+test('the dashboard carries the daily goal chosen in the pomodoro settings', function () {
+    $user = User::factory()->create();
+    PomodoroSetting::factory()->for($user)->create(['daily_goal_minutes' => 150]);
+    StudyPlan::factory()->for($user)->active()->create(['weekly_goal_minutes' => 700]);
+
+    $this->actingAs($user)
+        ->get('/dashboard')
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->where('stats.dailyGoalMinutes', 150)
+            ->where('stats.weekGoalMinutes', 700));
 });
 
 test('a running session contributes its live elapsed time to the week', function () {

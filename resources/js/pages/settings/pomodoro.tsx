@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
+import { formatDurationMinutes } from '@/lib/format-duration';
 import { edit, update } from '@/routes/pomodoro-settings';
 import type { PomodoroSettingFull } from '@/types/study';
 
@@ -14,6 +15,10 @@ const CYCLE_OPTIONS = ['2', '3', '4', '5'].map((value) => ({
     value,
     label: value,
 }));
+
+/** Espelha `PomodoroSetting::MIN/MAX_DAILY_GOAL_MINUTES`. */
+const MIN_DAILY_GOAL_MINUTES = 5;
+const MAX_DAILY_GOAL_MINUTES = 960;
 
 interface PomodoroEditProps {
     settings: PomodoroSettingFull;
@@ -25,12 +30,15 @@ export default function PomodoroEdit({ settings }: PomodoroEditProps) {
         short_break_minutes: settings.shortBreakMinutes,
         long_break_minutes: settings.longBreakMinutes,
         cycles_before_long_break: settings.cyclesBeforeLongBreak,
+        daily_goal_minutes: settings.dailyGoalMinutes,
         auto_start_break: settings.autoStartBreak,
         auto_start_focus: settings.autoStartFocus,
         log_session_on_finish: settings.logSessionOnFinish,
         silent_mode_during_focus: settings.silentModeDuringFocus,
         exclude_breaks_from_study_time: settings.excludeBreaksFromStudyTime,
     });
+
+    const weeklyEquivalent = Math.max(0, form.data.daily_goal_minutes) * 7;
 
     function submit(event: FormEvent) {
         event.preventDefault();
@@ -125,6 +133,47 @@ export default function PomodoroEdit({ settings }: PomodoroEditProps) {
                             }
                         />
                         <span className="text-sm text-fg-2">pomodoros</span>
+                    </div>
+                </Panel>
+
+                <Panel title="Meta do dia">
+                    <div className="flex flex-wrap items-end gap-4">
+                        <div className="flex w-40 flex-col gap-2">
+                            <Label htmlFor="daily_goal_minutes">
+                                Minutos por dia
+                            </Label>
+                            <Input
+                                id="daily_goal_minutes"
+                                type="number"
+                                min={MIN_DAILY_GOAL_MINUTES}
+                                max={MAX_DAILY_GOAL_MINUTES}
+                                value={form.data.daily_goal_minutes}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'daily_goal_minutes',
+                                        Number(event.target.value || 0),
+                                    )
+                                }
+                            />
+                            {form.errors.daily_goal_minutes && (
+                                <p className="text-sm text-destructive">
+                                    {form.errors.daily_goal_minutes}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* O equivalente semanal fica à vista porque a meta
+                            da semana continua sendo do plano: sem isso, as
+                            duas poderiam discordar sem ninguém notar. */}
+                        <p className="pb-2 text-sm text-fg-2">
+                            É a meta da tela de foco e a linha das barras do
+                            progresso.{' '}
+                            <strong className="font-mono font-semibold text-foreground tabular-nums">
+                                {formatDurationMinutes(weeklyEquivalent)}
+                            </strong>{' '}
+                            por semana, estudando todos os dias — a meta
+                            semanal do plano é separada desta.
+                        </p>
                     </div>
                 </Panel>
 

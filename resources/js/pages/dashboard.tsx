@@ -55,8 +55,10 @@ export default function Dashboard({
     pace,
     cycle = null,
 }: DashboardProps) {
-    const dailyGoal =
-        stats.weekGoalMinutes > 0 ? Math.round(stats.weekGoalMinutes / 7) : 0;
+    // A linha de meta das barras é a meta do dia que o usuário escolheu, e
+    // não mais a semanal dividida por sete — divisão que supunha uma rotina
+    // de sete dias que ninguém tinha declarado.
+    const dailyGoal = stats.dailyGoalMinutes;
     // Trocar de plano substitui a tela inteira: os números esmaecem
     // enquanto os do plano novo não chegam, em vez de trocarem seco.
     const [busy, setBusy] = useState(false);

@@ -367,6 +367,7 @@ test('saving notes without an active session conflicts instead of failing', func
 
 test('the focus screen reports the minutes studied today against the daily goal', function () {
     $user = User::factory()->create();
+    PomodoroSetting::factory()->for($user)->create(['daily_goal_minutes' => 100]);
     StudyPlan::factory()->for($user)->active()->create(['weekly_goal_minutes' => 700]);
     StudySession::factory()->for($user)->completed()->create([
         'accumulated_seconds' => 1800,
@@ -380,6 +381,27 @@ test('the focus screen reports the minutes studied today against the daily goal'
         ->assertInertia(fn ($page) => $page
             ->where('today.minutes', 30)
             ->where('today.goalMinutes', 100));
+});
+
+// A meta do dia é preferência de quem estuda: a semanal do plano deixou de
+// mandar nela, e dividir por sete supunha uma rotina que ninguém declarou.
+test('the daily goal comes from the pomodoro settings, not from the weekly plan', function () {
+    $user = User::factory()->create();
+    PomodoroSetting::factory()->for($user)->create(['daily_goal_minutes' => 180]);
+    StudyPlan::factory()->for($user)->active()->create(['weekly_goal_minutes' => 700]);
+
+    $this->actingAs($user)
+        ->get('/foco')
+        ->assertInertia(fn ($page) => $page->where('today.goalMinutes', 180));
+});
+
+test('the daily goal stands even without a study plan', function () {
+    $user = User::factory()->create();
+    PomodoroSetting::factory()->for($user)->create(['daily_goal_minutes' => 90]);
+
+    $this->actingAs($user)
+        ->get('/foco')
+        ->assertInertia(fn ($page) => $page->where('today.goalMinutes', 90));
 });
 
 test('breaks join the studied time when the user asks for it', function () {

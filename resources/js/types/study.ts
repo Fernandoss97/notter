@@ -132,6 +132,8 @@ export type TrackPace = {
 export type DashboardStats = {
     weekMinutes: number;
     weekGoalMinutes: number;
+    /** A meta de um dia, escolhida nas configurações do pomodoro. */
+    dailyGoalMinutes: number;
     topicsDone: number;
     topicsTotal: number;
     topicsDoneThisWeek: number;
@@ -338,6 +340,8 @@ export type PomodoroSettingFull = {
     shortBreakMinutes: number;
     longBreakMinutes: number;
     cyclesBeforeLongBreak: number;
+    /** Quanto se pretende estudar num dia. Escolha de quem estuda. */
+    dailyGoalMinutes: number;
     autoStartBreak: boolean;
     autoStartFocus: boolean;
     logSessionOnFinish: boolean;
