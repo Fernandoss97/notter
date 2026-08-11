@@ -16,6 +16,12 @@ use App\Models\User;
  * chegou a zero sem nenhum teste reclamar. Este arquivo existe para deixar
  * uma captura dessa tela, que é o único jeito de ver o que os seletores
  * não veem.
+ *
+ * Entra pela porta da frente com `actingAs` em vez de preencher o login e
+ * navegar até aqui: no plugin de browser só a primeira navegação de um
+ * teste vale — um `navigate()` posterior chega deslogado e as asserções
+ * seguem olhando a página anterior. Uma visita só, direto na tela que
+ * interessa.
  */
 test('a full rotation screen holds together', function () {
     $user = User::factory()->create();
@@ -47,14 +53,11 @@ test('a full rotation screen holds together', function () {
         ]);
     }
 
-    $page = visit('/login')
-        ->fill('email', $user->email)
-        ->fill('password', 'password')
-        ->click('Log in')
-        ->assertNoJavaScriptErrors();
+    $this->actingAs($user);
 
-    $page->navigate('/ciclo')
-        ->assertSee('Direito Constitucional')
+    $page = visit('/ciclo');
+
+    $page->assertSee('Direito Constitucional')
         ->assertSee('Direito Administrativo')
         ->assertSee('Raciocínio Lógico')
         ->assertSee('Informática')

@@ -59,12 +59,9 @@ test('a block picks up where it stopped after the page is left and reopened', fu
         'block_minutes' => 60,
     ]);
 
-    $page = visit('/login')
-        ->fill('email', $user->email)
-        ->fill('password', 'password')
-        ->click('Log in')
-        ->assertPathIs('/foco')
-        ->assertNoJavaScriptErrors();
+    $this->actingAs($user);
+
+    $page = visit('/foco');
 
     $page->click('button:has-text("Iniciar sessão de foco")')
         ->assertSee('Direito Constitucional')
@@ -75,7 +72,12 @@ test('a block picks up where it stopped after the page is left and reopened', fu
     $page->click('[data-slot="focus-timer"] button:text-is("Pausar")')
         ->assertNoJavaScriptErrors();
 
-    $page->navigate('/ciclo')
+    // Sai e volta pela navegação do app, não por `navigate()`: no plugin
+    // de browser só a primeira navegação de um teste vale, e a partir da
+    // segunda as asserções continuam olhando a página anterior. Pela
+    // barra lateral o percurso é o mesmo que o do usuário.
+    $page->hover('[data-slot="sidebar"]')
+        ->click('Ciclo')
         ->assertPathIs('/ciclo')
         ->assertSee('É a vez')
         ->assertSee('de 1h 0min')
@@ -83,7 +85,9 @@ test('a block picks up where it stopped after the page is left and reopened', fu
 
     // E a sessão continua de pé ao voltar: o bloco não foi encerrado por
     // ninguém ter saído da tela.
-    $page->navigate('/foco')
+    $page->hover('[data-slot="sidebar"]')
+        ->click('Foco')
+        ->assertPathIs('/foco')
         ->assertSee('A vez do ciclo')
         ->assertNoJavaScriptErrors();
 });
@@ -101,14 +105,11 @@ test('finishing the theory of a subject frees room in the rotation', function ()
         ]);
     }
 
-    $page = visit('/login')
-        ->fill('email', $user->email)
-        ->fill('password', 'password')
-        ->click('Log in')
-        ->assertNoJavaScriptErrors();
+    $this->actingAs($user);
 
-    $page->navigate('/ciclo')
-        ->assertSee('90min')
+    $page = visit('/ciclo');
+
+    $page->assertSee('90min')
         ->assertNoJavaScriptErrors();
 
     // Passar para revisão encolhe o bloco sozinho: é a folga assim
@@ -150,14 +151,11 @@ test('the rotation warns about neighbouring families and reorders on request', f
         ]);
     }
 
-    $page = visit('/login')
-        ->fill('email', $user->email)
-        ->fill('password', 'password')
-        ->click('Log in')
-        ->assertNoJavaScriptErrors();
+    $this->actingAs($user);
 
-    $page->navigate('/ciclo')
-        ->assertSee('Constitucional e Administrativo')
+    $page = visit('/ciclo');
+
+    $page->assertSee('Constitucional e Administrativo')
         ->assertNoJavaScriptErrors();
 
     // O aviso some porque a ordem deixou de ter o problema, não porque
@@ -180,16 +178,13 @@ test('a block can be called done ahead of the target and the rotation moves on',
         ]);
     }
 
-    $page = visit('/login')
-        ->fill('email', $user->email)
-        ->fill('password', 'password')
-        ->click('Log in')
-        ->assertNoJavaScriptErrors();
+    $this->actingAs($user);
+
+    $page = visit('/ciclo');
 
     // Fechar um bloco convida para a próxima matéria — é o único momento
     // em que a intercalação fala com quem estuda.
-    $page->navigate('/ciclo')
-        ->click('button:text-is("Encerrar")')
+    $page->click('button:text-is("Encerrar")')
         ->assertSee('Agora é Português')
         ->assertSee('1 de 2 blocos')
         ->assertNoJavaScriptErrors();
